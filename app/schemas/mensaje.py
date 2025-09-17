@@ -11,9 +11,16 @@ class MensajeBase(BaseModel):
 class MensajeCreate(MensajeBase):
     pass
 
+class MensajeUpdate(BaseModel):
+    contenido: Optional[str] = None
+    imagen: Optional[str] = None
+
 class MensajeResponse(MensajeBase):
     id_mensaje: int
     fecha_envio: datetime
 
     class Config:
         orm_mode = True
+
+    class Config:
+        from_attributes = True
