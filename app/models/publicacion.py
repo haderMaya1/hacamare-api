@@ -14,3 +14,4 @@ class Publicacion(Base):
 
     # Relación con Usuario
     usuario = relationship("Usuario", back_populates="publicaciones")
+    reacciones = relationship("ReaccionPublicacion", back_populates="publicacion", cascade="all, delete-orphan")

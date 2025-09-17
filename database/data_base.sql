@@ -99,6 +99,22 @@ CREATE TABLE reaccion_publicacion (
     FOREIGN KEY (id_publicacion) REFERENCES publicacion (id_publicacion)
 );
 
+-- Tabla comentario
+CREATE TABLE comentario (
+    id_comentario INTEGER PRIMARY KEY AUTOINCREMENT,
+    contenido TEXT NOT NULL,
+    fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    estado TEXT CHECK (estado IN ('visible', 'oculto', 'eliminado')) DEFAULT 'visible',
+    id_publicacion INTEGER NOT NULL,
+    id_usuario INTEGER NOT NULL,
+    id_comentario_padre INTEGER,  -- Para comentarios anidados/respuestas
+    imagen TEXT,  -- Opcional: para comentarios con imagen
+    FOREIGN KEY (id_publicacion) REFERENCES publicacion (id_publicacion) ON DELETE CASCADE,
+    FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+    FOREIGN KEY (id_comentario_padre) REFERENCES comentario (id_comentario) ON DELETE CASCADE,
+    CHECK (id_comentario_padre != id_comentario)  -- Evitar auto-referencia
+);
+
 -- Tabla solicitud_amistad
 CREATE TABLE solicitud_amistad (
     id_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,
