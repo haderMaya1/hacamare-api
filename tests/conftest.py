@@ -2,19 +2,41 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
+from fastapi.testclient import TestClient
+from app.main import app
+from app.models.rol import Rol
+import os
 
-# Base de datos en memoria para pruebas
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+# Detectar DB para tests (por defecto SQLite en memoria)
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Crear engine compartido
+if TEST_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(TEST_DATABASE_URL, echo=False)
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Crear todas las tablas antes de los tests
-Base.metadata.create_all(bind=engine)
+# Crear todas las tablas al inicio de la sesión de tests
+@pytest.fixture(scope="session", autouse=True)
+def setup_database():
+    Base.metadata.create_all(bind=engine)
 
+    # Seeder: rol por defecto
+    session = TestingSessionLocal()
+    if not session.query(Rol).filter_by(id_rol=1).first():
+        session.add(Rol(id_rol=1, nombre="Default", permisos="{}"))
+        session.commit()
+    session.close()
+
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+# Fixture para manejar la sesión (rollback en cada test)
 @pytest.fixture
 def db_session():
-    """Crea una sesión de base de datos nueva para cada test"""
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
@@ -26,12 +48,10 @@ def db_session():
         transaction.rollback()
         connection.close()
 
-# Override para que FastAPI use esta sesión en lugar de la real
-@pytest.fixture(autouse=True)
-def override_get_db(db_session, monkeypatch):
-    def _get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-    monkeypatch.setattr("app.database.get_db", _get_db)
+# Fixture para cliente FastAPI que use la misma sesión
+@pytest.fixture
+def client(db_session):
+    def override_get_db():
+        yield db_session  # no cerramos aquí, rollback lo maneja db_session
+    app.dependency_overrides[get_db] = override_get_db
+    return TestClient(app)

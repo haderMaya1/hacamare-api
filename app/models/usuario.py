@@ -25,5 +25,4 @@ class Usuario(Base):
     expiracion_token = Column(DateTime)
 
     id_rol = Column(Integer, ForeignKey("rol.id_rol"), nullable=False)
-
     rol = relationship("Rol", back_populates="usuarios")

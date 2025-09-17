@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.config import settings
-from app.routers import rol, usuarios, interes
+from app.routers import rol, usuarios, interes, usuario_interes
 
 # Inicialización de la app FastAPI
 app = FastAPI(
@@ -13,6 +13,7 @@ app = FastAPI(
 app.include_router(rol.router)
 app.include_router(usuarios.router)
 app.include_router(interes.router)
+app.include_router(usuario_interes.router)
 
 # Ruta de healthcheck
 @app.get("/", tags=["Health"])
