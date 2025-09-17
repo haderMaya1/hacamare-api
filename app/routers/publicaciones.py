@@ -1,47 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
-from app.models.publicacion import Publicacion
-from app.schemas.publicacion import PublicacionCreate, PublicacionResponse, PublicacionUpdate
+from app.schemas.publicacion import PublicacionCreate, PublicacionUpdate, PublicacionResponse
+from app.services.publicacion_service import (
+    crear_publicacion,
+    obtener_publicaciones,
+    obtener_publicacion_por_id,
+    actualizar_publicacion,
+    eliminar_publicacion
+)
 
 router = APIRouter(prefix="/publicaciones", tags=["Publicaciones"])
 
-@router.post("/", response_model=PublicacionResponse)
+@router.post("/", response_model=dict)
 def create_publicacion(publicacion: PublicacionCreate, db: Session = Depends(get_db)):
-    nueva_pub = Publicacion(**publicacion.dict())
-    db.add(nueva_pub)
-    db.commit()
-    db.refresh(nueva_pub)
-    return nueva_pub
+    nueva = crear_publicacion(db, publicacion)
+    return {
+        "message": "Publicación creada exitosamente",
+        "data": PublicacionResponse.model_validate(nueva, from_attributes=True)
+    }
 
-@router.get("/", response_model=List[PublicacionResponse])
+@router.get("/", response_model=dict)
 def get_publicaciones(db: Session = Depends(get_db)):
-    return db.query(Publicacion).all()
+    publicaciones = obtener_publicaciones(db)
+    return {
+        "message": "Lista de publicaciones",
+        "data": [PublicacionResponse.model_validate(p, from_attributes=True) for p in publicaciones]
+    }
 
-@router.get("/{id_publicacion}", response_model=PublicacionResponse)
+@router.get("/{id_publicacion}", response_model=dict)
 def get_publicacion(id_publicacion: int, db: Session = Depends(get_db)):
-    pub = db.query(Publicacion).filter(Publicacion.id_publicacion == id_publicacion).first()
+    pub = obtener_publicacion_por_id(db, id_publicacion)
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    return pub
+    return {
+        "message": "Publicación encontrada",
+        "data": PublicacionResponse.model_validate(pub, from_attributes=True)
+    }
 
-@router.put("/{id_publicacion}", response_model=PublicacionResponse)
-def update_publicacion(id_publicacion: int, pub_update: PublicacionUpdate, db: Session = Depends(get_db)):
-    pub = db.query(Publicacion).filter(Publicacion.id_publicacion == id_publicacion).first()
+@router.put("/{id_publicacion}", response_model=dict)
+def update_publicacion(id_publicacion: int, publicacion: PublicacionUpdate, db: Session = Depends(get_db)):
+    pub = actualizar_publicacion(db, id_publicacion, publicacion)
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    for key, value in pub_update.dict(exclude_unset=True).items():
-        setattr(pub, key, value)
-    db.commit()
-    db.refresh(pub)
-    return pub
+    return {
+        "message": "Publicación actualizada correctamente",
+        "data": PublicacionResponse.model_validate(pub, from_attributes=True)
+    }
 
-@router.delete("/{id_publicacion}")
+@router.delete("/{id_publicacion}", response_model=dict)
 def delete_publicacion(id_publicacion: int, db: Session = Depends(get_db)):
-    pub = db.query(Publicacion).filter(Publicacion.id_publicacion == id_publicacion).first()
+    pub = eliminar_publicacion(db, id_publicacion)
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    db.delete(pub)
-    db.commit()
-    return {"detail": "Publicación eliminada correctamente"}
+    return {"message": "Publicación eliminada correctamente"}
