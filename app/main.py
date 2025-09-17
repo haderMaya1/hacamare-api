@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from app.config import settings
-from app.routers import rol, usuarios, interes, usuario_interes, publicaciones, sesion_chat, usuario_sesion_chat, mensaje, reaccion_publicacion, comentarios, solicitud_amistad, contactos, faq, notificaciones, auth
+from app.routers import (rol, usuarios, interes,
+                        usuario_interes, publicaciones,
+                        sesion_chat, usuario_sesion_chat,
+                        mensaje, reaccion_publicacion, comentarios, 
+                        solicitud_amistad, contactos, faq, notificaciones, auth)
 
 # Inicialización de la app FastAPI
 app = FastAPI(

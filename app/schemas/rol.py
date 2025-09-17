@@ -1,36 +1,22 @@
-from typing import Optional, Dict
 from pydantic import BaseModel
-import json
+from typing import Optional, Dict
 
 class RolBase(BaseModel):
     nombre: str
-    permisos: Optional[Dict] = {}
+    permisos: Optional[Dict[str, str]] = None  # Dict para representar JSON
+
+    model_config = {"from_attributes": True}  # equivale a orm_mode=True en Pydantic v2
 
 class RolCreate(RolBase):
     pass
 
 class RolUpdate(BaseModel):
     nombre: Optional[str] = None
-    permisos: Optional[Dict] = None
+    permisos: Optional[Dict[str, str]] = None
 
-class RolOut(BaseModel):
-    id_rol: int
-    nombre: str
-    permisos: dict
-
-    class Config:
-        orm_mode = True
-
-    @classmethod
-    def from_orm(cls, obj):
-        return cls(
-            id_rol=obj.id_rol,
-            nombre=obj.nombre,
-            permisos=obj.get_permisos()  # usamos helper del modelo
-        )
+    model_config = {"from_attributes": True}
 
 class RolResponse(RolBase):
     id_rol: int
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}

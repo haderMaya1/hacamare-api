@@ -1,54 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
-from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioResponse, UsuarioUpdate
-from app.models.rol import Rol
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioResponse
+from app.services.usuario_service import (
+    crear_usuario,
+    obtener_usuarios,
+    obtener_usuario_por_id,
+    actualizar_usuario,
+    eliminar_usuario
+)
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
-@router.post("/", response_model=UsuarioResponse)
+@router.post("/", response_model=dict)
 def create_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
-    rol = db.query(Rol).filter(Rol.id_rol == usuario.id_rol).first()
-    if not rol:
-        raise HTTPException(status_code=400, detail="Rol no válido")
+    nuevo_usuario = crear_usuario(db, usuario)
+    return {
+        "message": "Usuario creado exitosamente",
+        "data": UsuarioResponse.model_validate(nuevo_usuario, from_attributes=True)   # 👈 CORREGIDO
+    }
 
-    nuevo_usuario = Usuario(**usuario.dict())
-    db.add(nuevo_usuario)
-    db.commit()
-    db.refresh(nuevo_usuario)
-    return nuevo_usuario
-
-@router.get("/", response_model=List[UsuarioResponse])
+@router.get("/", response_model=dict)
 def get_usuarios(db: Session = Depends(get_db)):
-    return db.query(Usuario).all()
+    usuarios = obtener_usuarios(db)
+    return {
+        "message": "Lista de usuarios",
+        "data": [UsuarioResponse.model_validate(u, from_attributes=True) for u in usuarios]  # 👈 CORREGIDO
+    }
 
-@router.get("/{usuario_id}", response_model=UsuarioResponse)
+@router.get("/{usuario_id}", response_model=dict)
 def get_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    usuario = obtener_usuario_por_id(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return usuario
+    return {
+        "message": "Usuario encontrado",
+        "data": UsuarioResponse.model_validate(usuario, from_attributes=True)   # 👈 CORREGIDO
+    }
 
-@router.put("/{usuario_id}", response_model=UsuarioResponse)
-def update_usuario(usuario_id: int, usuario_update: UsuarioUpdate, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
-    if not usuario:
+@router.put("/{usuario_id}", response_model=dict)
+def update_usuario(usuario_id: int, usuario: UsuarioUpdate, db: Session = Depends(get_db)):
+    actualizado = actualizar_usuario(db, usuario_id, usuario)
+    if not actualizado:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {
+        "message": "Usuario actualizado correctamente",
+        "data": UsuarioResponse.model_validate(actualizado, from_attributes=True)   # 👈 CORREGIDO
+    }
 
-    for key, value in usuario_update.model_dump(exclude_unset=True).items():
-        setattr(usuario, key, value)
-
-    db.commit()
-    db.refresh(usuario)
-    return usuario
-
-@router.delete("/{usuario_id}")
+@router.delete("/{usuario_id}", response_model=dict)
 def delete_usuario(usuario_id: int, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
-    if not usuario:
+    eliminado = eliminar_usuario(db, usuario_id)
+    if not eliminado:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    db.delete(usuario)
-    db.commit()
-    return {"detail": "Usuario eliminado correctamente"}
+    return {"message": "Usuario eliminado correctamente"}

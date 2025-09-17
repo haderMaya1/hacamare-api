@@ -16,10 +16,10 @@ class UsuarioBase(BaseModel):
     estado_cuenta: Optional[str] = "activo"
     email_verificado: Optional[bool] = False
     id_rol: int
-
+    
 class UsuarioCreate(UsuarioBase):
     contraseña: str
-
+    
 class UsuarioUpdate(BaseModel):
     nombre_usuario: Optional[str] = None
     nombres: Optional[str] = None
@@ -32,10 +32,7 @@ class UsuarioUpdate(BaseModel):
     foto_perfil: Optional[str] = None
     estado_cuenta: Optional[str] = None
     email_verificado: Optional[bool] = None
-
+    
 class UsuarioResponse(UsuarioBase):
     id_usuario: int
     fecha_registro: datetime
-
-    class Config:
-        from_attributes = True  # en vez de orm_mode
