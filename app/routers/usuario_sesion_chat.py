@@ -1,44 +1,47 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
-from app.models.usuario_sesion_chat import UsuarioSesionChat
 from app.schemas.usuario_sesion_chat import UsuarioSesionChatCreate, UsuarioSesionChatResponse
+from app.services.usuario_sesion_chat_service import (
+    crear_usuario_sesion_chat,
+    obtener_relaciones_usuario_sesion,
+    obtener_relacion,
+    eliminar_usuario_sesion_chat
+)
 
-router = APIRouter(prefix="/usuario_sesion_chat", tags=["Usuarios en Sesiones de Chat"])
+router = APIRouter(prefix="/usuario-sesion-chat", tags=["Usuario - Sesión Chat"])
 
-@router.post("/", response_model=UsuarioSesionChatResponse)
+@router.post("/", response_model=dict)
 def create_usuario_sesion_chat(relacion: UsuarioSesionChatCreate, db: Session = Depends(get_db)):
-    existe = db.query(UsuarioSesionChat).filter_by(
-        id_usuario=relacion.id_usuario, id_sesion=relacion.id_sesion
-    ).first()
-    if existe:
-        raise HTTPException(status_code=400, detail="La relación ya existe")
-    nueva_relacion = UsuarioSesionChat(**relacion.dict())
-    db.add(nueva_relacion)
-    db.commit()
-    db.refresh(nueva_relacion)
-    return nueva_relacion
+    nueva = crear_usuario_sesion_chat(db, relacion)
+    if not nueva:
+        raise HTTPException(status_code=400, detail="Relación ya existe")
+    return {
+        "message": "Relación usuario-sesión creada exitosamente",
+        "data": UsuarioSesionChatResponse.model_validate(nueva, from_attributes=True)
+    }
 
-@router.get("/", response_model=List[UsuarioSesionChatResponse])
-def get_relaciones(db: Session = Depends(get_db)):
-    return db.query(UsuarioSesionChat).all()
+@router.get("/", response_model=dict)
+def get_relaciones_usuario_sesion(db: Session = Depends(get_db)):
+    relaciones = obtener_relaciones_usuario_sesion(db)
+    return {
+        "message": "Lista de relaciones usuario-sesión",
+        "data": [UsuarioSesionChatResponse.model_validate(r, from_attributes=True) for r in relaciones]
+    }
 
-@router.get("/usuario/{id_usuario}", response_model=List[UsuarioSesionChatResponse])
-def get_sesiones_de_usuario(id_usuario: int, db: Session = Depends(get_db)):
-    return db.query(UsuarioSesionChat).filter(UsuarioSesionChat.id_usuario == id_usuario).all()
-
-@router.get("/sesion/{id_sesion}", response_model=List[UsuarioSesionChatResponse])
-def get_usuarios_de_sesion(id_sesion: int, db: Session = Depends(get_db)):
-    return db.query(UsuarioSesionChat).filter(UsuarioSesionChat.id_sesion == id_sesion).all()
-
-@router.delete("/")
-def delete_usuario_sesion_chat(relacion: UsuarioSesionChatCreate, db: Session = Depends(get_db)):
-    obj = db.query(UsuarioSesionChat).filter_by(
-        id_usuario=relacion.id_usuario, id_sesion=relacion.id_sesion
-    ).first()
-    if not obj:
+@router.get("/{id_usuario}/{id_sesion}", response_model=dict)
+def get_relacion_usuario_sesion(id_usuario: int, id_sesion: int, db: Session = Depends(get_db)):
+    relacion = obtener_relacion(db, id_usuario, id_sesion)
+    if not relacion:
         raise HTTPException(status_code=404, detail="Relación no encontrada")
-    db.delete(obj)
-    db.commit()
-    return {"message": "Relación eliminada"}
+    return {
+        "message": "Relación encontrada",
+        "data": UsuarioSesionChatResponse.model_validate(relacion, from_attributes=True)
+    }
+
+@router.delete("/{id_usuario}/{id_sesion}", response_model=dict)
+def delete_usuario_sesion_chat(id_usuario: int, id_sesion: int, db: Session = Depends(get_db)):
+    eliminado = eliminar_usuario_sesion_chat(db, id_usuario, id_sesion)
+    if not eliminado:
+        raise HTTPException(status_code=404, detail="Relación no encontrada")
+    return {"message": "Relación usuario-sesión eliminada correctamente"}
