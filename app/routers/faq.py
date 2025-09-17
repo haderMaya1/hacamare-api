@@ -1,47 +1,48 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.faq import Faq
 from app.schemas.faq import FaqCreate, FaqUpdate, FaqResponse
-from typing import List
+from app.services.faq_service import (
+    crear_faq, obtener_faqs, obtener_faq, actualizar_faq, eliminar_faq
+)
 
 router = APIRouter(prefix="/faqs", tags=["FAQs"])
 
-@router.post("/", response_model=FaqResponse)
+@router.post("/", response_model=dict)
 def create_faq(faq: FaqCreate, db: Session = Depends(get_db)):
-    nueva_faq = Faq(**faq.dict())
-    db.add(nueva_faq)
-    db.commit()
-    db.refresh(nueva_faq)
-    return nueva_faq
+    nueva_faq = crear_faq(db, faq)
+    return {
+        "message": "FAQ creada exitosamente",
+        "data": FaqResponse.model_validate(nueva_faq, from_attributes=True)   # 👈 CORREGIDO
+    }
 
-@router.get("/", response_model=List[FaqResponse])
-def get_faqs(db: Session = Depends(get_db)):
-    return db.query(Faq).all()
+@router.get("/", response_model=dict)
+def read_faqs(db: Session = Depends(get_db)):
+    faqs = obtener_faqs(db)
+    return {
+        "data": [FaqResponse.model_validate(f, from_attributes=True) for f in faqs]   # 👈 CORREGIDO
+    }
 
-@router.get("/{id_faq}", response_model=FaqResponse)
-def get_faq(id_faq: int, db: Session = Depends(get_db)):
-    faq = db.query(Faq).filter(Faq.id_faq == id_faq).first()
+@router.get("/{id_faq}", response_model=dict)
+def read_faq(id_faq: int, db: Session = Depends(get_db)):
+    faq = obtener_faq(db, id_faq)
     if not faq:
         raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    return faq
+    return {"data": FaqResponse.model_validate(faq, from_attributes=True)}   # 👈 CORREGIDO
 
-@router.put("/{id_faq}", response_model=FaqResponse)
-def update_faq(id_faq: int, faq_update: FaqUpdate, db: Session = Depends(get_db)):
-    faq = db.query(Faq).filter(Faq.id_faq == id_faq).first()
-    if not faq:
+@router.put("/{id_faq}", response_model=dict)
+def update_faq(id_faq: int, faq_data: FaqUpdate, db: Session = Depends(get_db)):
+    faq_actualizada = actualizar_faq(db, id_faq, faq_data)
+    if not faq_actualizada:
         raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    for key, value in faq_update.dict().items():
-        setattr(faq, key, value)
-    db.commit()
-    db.refresh(faq)
-    return faq
+    return {
+        "message": "FAQ actualizada correctamente",
+        "data": FaqResponse.model_validate(faq_actualizada, from_attributes=True)   # 👈 CORREGIDO
+    }
 
-@router.delete("/{id_faq}")
+@router.delete("/{id_faq}", response_model=dict)
 def delete_faq(id_faq: int, db: Session = Depends(get_db)):
-    faq = db.query(Faq).filter(Faq.id_faq == id_faq).first()
-    if not faq:
+    faq_eliminada = eliminar_faq(db, id_faq)
+    if not faq_eliminada:
         raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    db.delete(faq)
-    db.commit()
-    return {"detail": "FAQ eliminada correctamente"}
+    return {"message": "FAQ eliminada correctamente"}

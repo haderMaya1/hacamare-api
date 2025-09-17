@@ -7,11 +7,15 @@ class FaqBase(BaseModel):
 class FaqCreate(FaqBase):
     pass
 
-class FaqUpdate(FaqBase):
-    pass
-
+class FaqUpdate(BaseModel):
+    pregunta: str | None = None
+    respuesta: str | None = None
+    
 class FaqResponse(FaqBase):
     id_faq: int
 
     class Config:
         orm_mode = True
+    
+    class Config:
+        from_attributes = True
