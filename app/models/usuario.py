@@ -26,3 +26,4 @@ class Usuario(Base):
 
     id_rol = Column(Integer, ForeignKey("rol.id_rol"), nullable=False)
     rol = relationship("Rol", back_populates="usuarios")
+    publicaciones = relationship("Publicacion", back_populates="usuario", cascade="all, delete-orphan")
