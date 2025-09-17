@@ -12,6 +12,11 @@ class ComentarioBase(BaseModel):
 class ComentarioCreate(ComentarioBase):
     pass
 
+class ComentarioUpdate(BaseModel):
+    contenido: Optional[str] = None
+    estado: Optional[str] = None
+    imagen: Optional[str] = None
+
 class ComentarioResponse(ComentarioBase):
     id_comentario: int
     fecha_creacion: datetime
@@ -19,3 +24,6 @@ class ComentarioResponse(ComentarioBase):
 
     class Config:
         orm_mode = True
+        
+    class Config:
+        from_attributes = True

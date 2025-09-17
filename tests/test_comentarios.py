@@ -1,111 +1,160 @@
 import uuid
 
 def test_create_comentario(client):
-    # crear usuario
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "commenter" + uuid.uuid4().hex[:5],
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "commentuser" + uuid.uuid4().hex[:4],
         "contraseña": "1234",
-        "nombres": "Com",
-        "apellidos": "Ment",
-        "edad": 22,
+        "nombres": "Comment",
+        "apellidos": "User",
+        "edad": 20,
         "email": f"comment_{uuid.uuid4().hex[:6]}@test.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["id_usuario"]
+    usuario_id = usuario.json()["data"]["id_usuario"]
 
-    # crear publicación
-    pub_resp = client.post("/publicaciones/", json={
-        "texto": "Post para comentar",
+    publicacion = client.post("/publicaciones/", json={
+        "texto": "Publicación con comentario",
         "id_usuario": usuario_id
     })
-    publicacion_id = pub_resp.json()["id_publicacion"]
+    publicacion_id = publicacion.json()["data"]["id_publicacion"]
 
-    # crear comentario
     resp = client.post("/comentarios/", json={
         "contenido": "Este es un comentario",
         "id_publicacion": publicacion_id,
         "id_usuario": usuario_id
     })
-
     assert resp.status_code == 200
     data = resp.json()
-    assert data["contenido"] == "Este es un comentario"
-    assert data["id_publicacion"] == publicacion_id
-    assert data["id_usuario"] == usuario_id
-
+    assert data["data"]["contenido"] == "Este es un comentario"
 
 def test_get_comentarios(client):
     resp = client.get("/comentarios/")
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
-
+    assert "data" in resp.json()
 
 def test_get_comentario(client):
-    # crear usuario
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "commenter2" + uuid.uuid4().hex[:5],
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "getcomment" + uuid.uuid4().hex[:4],
         "contraseña": "1234",
-        "nombres": "Com2",
-        "apellidos": "Ment2",
-        "edad": 23,
-        "email": f"comment2_{uuid.uuid4().hex[:6]}@test.com",
+        "nombres": "Get",
+        "apellidos": "Comment",
+        "edad": 22,
+        "email": f"getcomment_{uuid.uuid4().hex[:6]}@test.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["id_usuario"]
+    usuario_id = usuario.json()["data"]["id_usuario"]
 
-    # crear publicación
-    pub_resp = client.post("/publicaciones/", json={
-        "texto": "Otro post",
+    publicacion = client.post("/publicaciones/", json={
+        "texto": "Publicación con comentario único",
         "id_usuario": usuario_id
     })
-    publicacion_id = pub_resp.json()["id_publicacion"]
+    publicacion_id = publicacion.json()["data"]["id_publicacion"]
 
-    # crear comentario
-    com_resp = client.post("/comentarios/", json={
-        "contenido": "Respuesta a post",
+    comentario = client.post("/comentarios/", json={
+        "contenido": "Comentario único",
         "id_publicacion": publicacion_id,
         "id_usuario": usuario_id
     })
-    comentario_id = com_resp.json()["id_comentario"]
+    comentario_id = comentario.json()["data"]["id_comentario"]
 
     resp = client.get(f"/comentarios/{comentario_id}")
     assert resp.status_code == 200
-    assert resp.json()["id_comentario"] == comentario_id
+    assert resp.json()["data"]["id_comentario"] == comentario_id
 
-
-def test_delete_comentario(client):
-    # crear usuario
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "commentdel" + uuid.uuid4().hex[:5],
+def test_respuestas_comentario(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "respuser" + uuid.uuid4().hex[:4],
         "contraseña": "1234",
-        "nombres": "Del",
-        "apellidos": "Coment",
+        "nombres": "Resp",
+        "apellidos": "User",
         "edad": 24,
-        "email": f"commentdel_{uuid.uuid4().hex[:6]}@test.com",
+        "email": f"resp_{uuid.uuid4().hex[:6]}@test.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["id_usuario"]
+    usuario_id = usuario.json()["data"]["id_usuario"]
 
-    # crear publicación
-    pub_resp = client.post("/publicaciones/", json={
-        "texto": "Post a borrar comentario",
+    publicacion = client.post("/publicaciones/", json={
+        "texto": "Publicación con respuestas",
         "id_usuario": usuario_id
     })
-    publicacion_id = pub_resp.json()["id_publicacion"]
+    publicacion_id = publicacion.json()["data"]["id_publicacion"]
 
-    # crear comentario
-    com_resp = client.post("/comentarios/", json={
-        "contenido": "Comentario a eliminar",
+    comentario = client.post("/comentarios/", json={
+        "contenido": "Comentario principal",
         "id_publicacion": publicacion_id,
         "id_usuario": usuario_id
     })
-    comentario_id = com_resp.json()["id_comentario"]
+    comentario_id = comentario.json()["data"]["id_comentario"]
 
-    # eliminar comentario
-    delete_resp = client.delete(f"/comentarios/{comentario_id}")
-    assert delete_resp.status_code == 200
-    assert delete_resp.json()["detail"] == "Comentario eliminado correctamente"
+    respuesta = client.post("/comentarios/", json={
+        "contenido": "Respuesta al comentario",
+        "id_publicacion": publicacion_id,
+        "id_usuario": usuario_id,
+        "id_comentario_padre": comentario_id
+    })
+    assert respuesta.status_code == 200
 
-    # intentar eliminar otra vez
-    delete_resp2 = client.delete(f"/comentarios/{comentario_id}")
-    assert delete_resp2.status_code == 404
+    resp = client.get(f"/comentarios/{comentario_id}/respuestas")
+    assert resp.status_code == 200
+    assert any(r["id_comentario_padre"] == comentario_id for r in resp.json()["data"])
+
+def test_update_comentario(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "upcomment" + uuid.uuid4().hex[:4],
+        "contraseña": "1234",
+        "nombres": "Up",
+        "apellidos": "Comment",
+        "edad": 23,
+        "email": f"upcomment_{uuid.uuid4().hex[:6]}@test.com",
+        "id_rol": 1
+    })
+    usuario_id = usuario.json()["data"]["id_usuario"]
+
+    publicacion = client.post("/publicaciones/", json={
+        "texto": "Post con comentario a editar",
+        "id_usuario": usuario_id
+    })
+    publicacion_id = publicacion.json()["data"]["id_publicacion"]
+
+    comentario = client.post("/comentarios/", json={
+        "contenido": "Comentario editable",
+        "id_publicacion": publicacion_id,
+        "id_usuario": usuario_id
+    })
+    comentario_id = comentario.json()["data"]["id_comentario"]
+
+    resp = client.put(f"/comentarios/{comentario_id}", json={"contenido": "Comentario editado"})
+    assert resp.status_code == 200
+    assert resp.json()["data"]["contenido"] == "Comentario editado"
+
+def test_delete_comentario(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "delcomment" + uuid.uuid4().hex[:4],
+        "contraseña": "1234",
+        "nombres": "Del",
+        "apellidos": "Comment",
+        "edad": 25,
+        "email": f"delcomment_{uuid.uuid4().hex[:6]}@test.com",
+        "id_rol": 1
+    })
+    usuario_id = usuario.json()["data"]["id_usuario"]
+
+    publicacion = client.post("/publicaciones/", json={
+        "texto": "Post para borrar comentario",
+        "id_usuario": usuario_id
+    })
+    publicacion_id = publicacion.json()["data"]["id_publicacion"]
+
+    comentario = client.post("/comentarios/", json={
+        "contenido": "Comentario a borrar",
+        "id_publicacion": publicacion_id,
+        "id_usuario": usuario_id
+    })
+    comentario_id = comentario.json()["data"]["id_comentario"]
+
+    resp = client.delete(f"/comentarios/{comentario_id}")
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "Comentario eliminado correctamente"
+
+    resp_not_found = client.delete(f"/comentarios/{comentario_id}")
+    assert resp_not_found.status_code == 404

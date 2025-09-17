@@ -9,9 +9,15 @@ class ReaccionPublicacionBase(BaseModel):
 class ReaccionPublicacionCreate(ReaccionPublicacionBase):
     pass
 
+class ReaccionPublicacionUpdate(BaseModel):
+    tipo: str
+
 class ReaccionPublicacionResponse(ReaccionPublicacionBase):
     id_reaccion: int
     fecha_reaccion: datetime
 
     class Config:
         orm_mode = True
+
+    class Config:
+        from_attributes = True
