@@ -29,3 +29,4 @@ class Usuario(Base):
     publicaciones = relationship("Publicacion", back_populates="usuario", cascade="all, delete-orphan")
     sesiones_chat = relationship("SesionChat", back_populates="anfitrion", cascade="all, delete-orphan")
     sesiones = relationship("SesionChat", secondary="usuario_sesion_chat", back_populates="usuarios")
+    mensajes = relationship("Mensaje", back_populates="remitente")

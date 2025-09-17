@@ -15,3 +15,4 @@ class SesionChat(Base):
     # Relación con Usuario (anfitrión)
     anfitrion = relationship("Usuario", back_populates="sesiones_chat")
     usuarios = relationship("Usuario", secondary="usuario_sesion_chat", back_populates="sesiones")
+    mensajes = relationship("Mensaje", back_populates="sesion")
