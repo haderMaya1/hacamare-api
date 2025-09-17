@@ -12,7 +12,7 @@ class InteresUpdate(BaseModel):
     nombre: Optional[str] = None
     categoria: Optional[str] = None
 
-class InteresOut(InteresBase):
+class InteresResponse(InteresBase):
     id_interes: int
 
     class Config:

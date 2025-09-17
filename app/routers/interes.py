@@ -1,47 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
-from app.models.interes import Interes
-from app.schemas.interes import InteresCreate, InteresUpdate, InteresOut
+from app.schemas.interes import InteresCreate, InteresUpdate, InteresResponse
+from app.services.interes_service import (
+    crear_interes,
+    obtener_intereses,
+    obtener_interes_por_id,
+    actualizar_interes,
+    eliminar_interes,
+)
 
-router = APIRouter(prefix="/intereses", tags=["Interes"])
+router = APIRouter(prefix="/intereses", tags=["Intereses"])
 
-@router.post("/", response_model=InteresOut)
+@router.post("/", response_model=dict)
 def create_interes(interes: InteresCreate, db: Session = Depends(get_db)):
-    nuevo = Interes(**interes.model_dump())
-    db.add(nuevo)
-    db.commit()
-    db.refresh(nuevo)
-    return nuevo
+    nuevo_interes = crear_interes(db, interes)
+    return {
+        "message": "Interés creado exitosamente",
+        "data": InteresResponse.model_validate(nuevo_interes, from_attributes=True)
+    }
 
-@router.get("/", response_model=List[InteresOut])
+@router.get("/", response_model=dict)
 def get_intereses(db: Session = Depends(get_db)):
-    return db.query(Interes).all()
+    intereses = obtener_intereses(db)
+    return {
+        "message": "Lista de intereses",
+        "data": [InteresResponse.model_validate(i, from_attributes=True) for i in intereses]
+    }
 
-@router.get("/{id_interes}", response_model=InteresOut)
-def get_interes(id_interes: int, db: Session = Depends(get_db)):
-    interes = db.query(Interes).filter(Interes.id_interes == id_interes).first()
+@router.get("/{interes_id}", response_model=dict)
+def get_interes(interes_id: int, db: Session = Depends(get_db)):
+    interes = obtener_interes_por_id(db, interes_id)
     if not interes:
-        raise HTTPException(status_code=404, detail="Interes no encontrado")
-    return interes
+        raise HTTPException(status_code=404, detail="Interés no encontrado")
+    return {
+        "message": "Interés encontrado",
+        "data": InteresResponse.model_validate(interes, from_attributes=True)
+    }
 
-@router.put("/{id_interes}", response_model=InteresOut)
-def update_interes(id_interes: int, interes_update: InteresUpdate, db: Session = Depends(get_db)):
-    interes = db.query(Interes).filter(Interes.id_interes == id_interes).first()
-    if not interes:
-        raise HTTPException(status_code=404, detail="Interes no encontrado")
-    for key, value in interes_update.model_dump(exclude_unset=True).items():
-        setattr(interes, key, value)
-    db.commit()
-    db.refresh(interes)
-    return interes
+@router.put("/{interes_id}", response_model=dict)
+def update_interes(interes_id: int, interes: InteresUpdate, db: Session = Depends(get_db)):
+    actualizado = actualizar_interes(db, interes_id, interes)
+    if not actualizado:
+        raise HTTPException(status_code=404, detail="Interés no encontrado")
+    return {
+        "message": "Interés actualizado correctamente",
+        "data": InteresResponse.model_validate(actualizado, from_attributes=True)
+    }
 
-@router.delete("/{id_interes}")
-def delete_interes(id_interes: int, db: Session = Depends(get_db)):
-    interes = db.query(Interes).filter(Interes.id_interes == id_interes).first()
-    if not interes:
-        raise HTTPException(status_code=404, detail="Interes no encontrado")
-    db.delete(interes)
-    db.commit()
-    return {"detail": "Interes eliminado correctamente"}
+@router.delete("/{interes_id}", response_model=dict)
+def delete_interes(interes_id: int, db: Session = Depends(get_db)):
+    eliminado = eliminar_interes(db, interes_id)
+    if not eliminado:
+        raise HTTPException(status_code=404, detail="Interés no encontrado")
+    return {"message": "Interés eliminado correctamente"}
