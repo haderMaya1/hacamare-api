@@ -7,6 +7,6 @@ class UsuarioInteresBase(BaseModel):
 class UsuarioInteresCreate(UsuarioInteresBase):
     pass
 
-class UsuarioInteresOut(UsuarioInteresBase):
+class UsuarioInteresResponse(UsuarioInteresBase):
     class Config:
         from_attributes = True
