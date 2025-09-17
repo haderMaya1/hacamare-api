@@ -34,3 +34,5 @@ class Usuario(Base):
     comentarios = relationship("Comentario", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_enviadas = relationship("SolicitudAmistad", foreign_keys="SolicitudAmistad.remitente_id", back_populates="remitente", cascade="all, delete-orphan")   
     solicitudes_recibidas = relationship("SolicitudAmistad", foreign_keys="SolicitudAmistad.destinatario_id", back_populates="destinatario", cascade="all, delete-orphan")
+    contactos1 = relationship("Contacto", foreign_keys="Contacto.usuario_id_1", back_populates="usuario1", cascade="all, delete-orphan")
+    contactos2 = relationship("Contacto", foreign_keys="Contacto.usuario_id_2", back_populates="usuario2", cascade="all, delete-orphan")

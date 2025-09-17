@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.config import settings
-from app.routers import rol, usuarios, interes, usuario_interes, publicaciones, sesion_chat, usuario_sesion_chat, mensaje, reaccion_publicacion, comentarios, solicitud_amistad
+from app.routers import rol, usuarios, interes, usuario_interes, publicaciones, sesion_chat, usuario_sesion_chat, mensaje, reaccion_publicacion, comentarios, solicitud_amistad, contactos
 
 # Inicialización de la app FastAPI
 app = FastAPI(
@@ -21,6 +21,7 @@ app.include_router(mensaje.router)
 app.include_router(reaccion_publicacion.router)
 app.include_router(comentarios.router)
 app.include_router(solicitud_amistad.router)
+app.include_router(contactos.router)
 
 # Ruta de healthcheck
 @app.get("/", tags=["Health"])
