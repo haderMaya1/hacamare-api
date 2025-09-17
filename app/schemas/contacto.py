@@ -14,3 +14,6 @@ class ContactoResponse(ContactoBase):
 
     class Config:
         orm_mode = True
+        
+    class Config:
+        from_attributes = True
