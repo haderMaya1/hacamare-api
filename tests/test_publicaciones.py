@@ -4,7 +4,7 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_create_publicacion():
+def test_create_publicacion(client):
     user_resp = client.post("/usuarios/", json={
         "nombre_usuario": "pubuser" + uuid.uuid4().hex[:4],
         "contraseña": "1234",
@@ -27,19 +27,19 @@ def test_create_publicacion():
     assert data["estado"] == "visible"
     assert "id_publicacion" in data
 
-def test_get_publicaciones():
+def test_get_publicaciones(client):
     response = client.get("/publicaciones/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-def test_get_publicacion():
+def test_get_publicacion(client):
     response = client.get("/publicaciones/1")
     assert response.status_code in [200, 404]
 
-def test_update_publicacion():
+def test_update_publicacion(client):
     response = client.put("/publicaciones/1", json={"estado": "oculto"})
     assert response.status_code in [200, 404]
 
-def test_delete_publicacion():
+def test_delete_publicacion(client):
     response = client.delete("/publicaciones/1")
     assert response.status_code in [200, 404]

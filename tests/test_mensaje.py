@@ -4,7 +4,7 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_create_mensaje():
+def test_create_mensaje(client):
     # Crear usuario
     user_resp = client.post("/usuarios/", json={
         "nombre_usuario": "msguser" + uuid.uuid4().hex[:4],
@@ -37,16 +37,16 @@ def test_create_mensaje():
     assert data["id_remitente"] == usuario_id
     assert data["id_sesion"] == sesion_id
 
-def test_get_mensajes():
+def test_get_mensajes(client):
     resp = client.get("/mensajes/")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
-def test_get_mensajes_sesion():
+def test_get_mensajes_sesion(client):
     resp = client.get("/mensajes/sesion/1")
     assert resp.status_code in [200, 404]
 
-def test_delete_mensaje():
+def test_delete_mensaje(client):
     # Crear usuario + sesión + mensaje
     user_resp = client.post("/usuarios/", json={
         "nombre_usuario": "delmsg" + uuid.uuid4().hex[:4],

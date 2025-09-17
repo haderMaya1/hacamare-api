@@ -88,6 +88,17 @@ CREATE TABLE mensaje (
     FOREIGN KEY (id_sesion) REFERENCES sesion_chat (id_sesion)
 );
 
+-- Tabla reaccion_publicacion
+CREATE TABLE reaccion_publicacion (
+    id_reaccion INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT CHECK (tipo IN ('like', 'dislike', 'me_encanta', 'me_divierte', 'me_asombra', 'me_entristece', 'me_enoja')) NOT NULL,
+    fecha_reaccion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id_usuario INTEGER NOT NULL,
+    id_publicacion INTEGER NOT NULL,
+    FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario),
+    FOREIGN KEY (id_publicacion) REFERENCES publicacion (id_publicacion)
+);
+
 -- Tabla solicitud_amistad
 CREATE TABLE solicitud_amistad (
     id_solicitud INTEGER PRIMARY KEY AUTOINCREMENT,
