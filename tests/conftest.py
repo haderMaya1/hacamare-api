@@ -5,6 +5,7 @@ from app.database import Base, get_db
 from fastapi.testclient import TestClient
 from app.main import app
 from app.models.rol import Rol
+from app.models.solicitud_amistad import SolicitudAmistad
 import os
 
 # Detectar DB para tests (por defecto SQLite en memoria)

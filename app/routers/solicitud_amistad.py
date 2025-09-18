@@ -1,44 +1,51 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.solicitud_amistad import SolicitudAmistad
-from app.schemas.solicitud_amistad import SolicitudCreate, SolicitudResponse
-from typing import List
+from app.schemas.solicitud_amistad import (
+    SolicitudAmistadCreate, SolicitudAmistadUpdate, SolicitudAmistadResponse
+)
+from app.services.solicitud_amistad_service import (
+    crear_solicitud, obtener_solicitudes, obtener_solicitud,
+    actualizar_solicitud, eliminar_solicitud
+)
 
 router = APIRouter(prefix="/solicitudes", tags=["Solicitudes de Amistad"])
 
-@router.post("/", response_model=SolicitudResponse)
-def create_solicitud(solicitud: SolicitudCreate, db: Session = Depends(get_db)):
-    if solicitud.remitente_id == solicitud.destinatario_id:
-        raise HTTPException(status_code=400, detail="No puedes enviarte solicitud a ti mismo")
+@router.post("/", response_model=dict)
+def create_solicitud(solicitud: SolicitudAmistadCreate, db: Session = Depends(get_db)):
+    nueva = crear_solicitud(db, solicitud)
+    return {
+        "message": "Solicitud enviada exitosamente",
+        "data": SolicitudAmistadResponse.model_validate(nueva, from_attributes=True)
+    }
 
-    nueva_solicitud = SolicitudAmistad(**solicitud.dict())
-    db.add(nueva_solicitud)
-    db.commit()
-    db.refresh(nueva_solicitud)
-    return nueva_solicitud
+@router.get("/", response_model=dict)
+def read_solicitudes(db: Session = Depends(get_db)):
+    solicitudes = obtener_solicitudes(db)
+    return {
+        "data": [SolicitudAmistadResponse.model_validate(s, from_attributes=True) for s in solicitudes]
+    }
 
-@router.get("/", response_model=List[SolicitudResponse])
-def get_solicitudes(db: Session = Depends(get_db)):
-    return db.query(SolicitudAmistad).all()
-
-@router.put("/{id_solicitud}", response_model=SolicitudResponse)
-def update_estado(id_solicitud: int, estado: str, db: Session = Depends(get_db)):
-    solicitud = db.query(SolicitudAmistad).filter(SolicitudAmistad.id_solicitud == id_solicitud).first()
+@router.get("/{id_solicitud}", response_model=dict)
+def read_solicitud(id_solicitud: int, db: Session = Depends(get_db)):
+    solicitud = obtener_solicitud(db, id_solicitud)
     if not solicitud:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    if estado not in ["pendiente", "aceptada", "rechazada"]:
-        raise HTTPException(status_code=400, detail="Estado inválido")
-    solicitud.estado = estado
-    db.commit()
-    db.refresh(solicitud)
-    return solicitud
+    return {"data": SolicitudAmistadResponse.model_validate(solicitud, from_attributes=True)}
 
-@router.delete("/{id_solicitud}")
+@router.put("/{id_solicitud}", response_model=dict)
+def update_solicitud(id_solicitud: int, solicitud_data: SolicitudAmistadUpdate, db: Session = Depends(get_db)):
+    solicitud = actualizar_solicitud(db, id_solicitud, solicitud_data)
+    if not solicitud:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    return {
+        "message": "Solicitud actualizada correctamente",
+        "data": SolicitudAmistadResponse.model_validate(solicitud, from_attributes=True)
+    }
+
+@router.delete("/{id_solicitud}", response_model=dict)
 def delete_solicitud(id_solicitud: int, db: Session = Depends(get_db)):
-    solicitud = db.query(SolicitudAmistad).filter(SolicitudAmistad.id_solicitud == id_solicitud).first()
+    solicitud = eliminar_solicitud(db, id_solicitud)
     if not solicitud:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    db.delete(solicitud)
-    db.commit()
-    return {"detail": "Solicitud eliminada correctamente"}
+    return {"message": "Solicitud eliminada correctamente"}

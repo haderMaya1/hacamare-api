@@ -1,103 +1,57 @@
-import uuid
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
 
-def test_create_solicitud(client):
-    # crear dos usuarios
-    user1 = client.post("/usuarios/", json={
-        "nombre_usuario": "sender" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "Remitente",
-        "apellidos": "Test",
-        "edad": 25,
-        "email": f"sender_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
-
-    user2 = client.post("/usuarios/", json={
-        "nombre_usuario": "receiver" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "Destinatario",
-        "apellidos": "Test",
-        "edad": 26,
-        "email": f"receiver_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
-
-    resp = client.post("/solicitudes/", json={
+@pytest.fixture
+def solicitud_data():
+    return {
         "mensaje": "¿Quieres ser mi amigo?",
-        "remitente_id": user1["id_usuario"],
-        "destinatario_id": user2["id_usuario"]
-    })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["estado"] == "pendiente"
-    assert data["remitente_id"] == user1["id_usuario"]
-    assert data["destinatario_id"] == user2["id_usuario"]
+        "estado": "pendiente",
+        "remitente_id": 1,
+        "destinatario_id": 2
+    }
+
+def test_create_solicitud(client, solicitud_data):
+    response = client.post("/solicitudes/", json=solicitud_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert data["data"]["mensaje"] == solicitud_data["mensaje"]
+    assert data["data"]["remitente_id"] == solicitud_data["remitente_id"]
+    assert data["data"]["destinatario_id"] == solicitud_data["destinatario_id"]
 
 def test_get_solicitudes(client):
-    resp = client.get("/solicitudes/")
-    assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    response = client.get("/solicitudes/")
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert isinstance(data["data"], list)
 
-def test_update_estado_solicitud(client):
-    # crear usuarios
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "solicitador" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "U1",
-        "apellidos": "Test",
-        "edad": 20,
-        "email": f"solicitador_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
+def test_get_solicitud(client, solicitud_data):
+    # Primero creamos una solicitud
+    create_response = client.post("/solicitudes/", json=solicitud_data)
+    solicitud_id = create_response.json()["data"]["id_solicitud"]
 
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "solicitado" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "U2",
-        "apellidos": "Test",
-        "edad": 21,
-        "email": f"solicitado_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
+    response = client.get(f"/solicitudes/{solicitud_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["id_solicitud"] == solicitud_id
 
-    solicitud = client.post("/solicitudes/", json={
-        "mensaje": "Conéctemos!",
-        "remitente_id": u1["id_usuario"],
-        "destinatario_id": u2["id_usuario"]
-    }).json()
+def test_update_solicitud(client, solicitud_data):
+    create_response = client.post("/solicitudes/", json=solicitud_data)
+    solicitud_id = create_response.json()["data"]["id_solicitud"]
 
-    resp = client.put(f"/solicitudes/{solicitud['id_solicitud']}?estado=aceptada")
-    assert resp.status_code == 200
-    assert resp.json()["estado"] == "aceptada"
+    update_data = {"estado": "aceptada"}
+    response = client.put(f"/solicitudes/{solicitud_id}", json=update_data)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["estado"] == "aceptada"
 
-def test_delete_solicitud(client):
-    # crear usuarios
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "deleter" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "Udel",
-        "apellidos": "Test",
-        "edad": 22,
-        "email": f"deleter_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
+def test_delete_solicitud(client, solicitud_data):
+    create_response = client.post("/solicitudes/", json=solicitud_data)
+    solicitud_id = create_response.json()["data"]["id_solicitud"]
 
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "deleted" + uuid.uuid4().hex[:5],
-        "contraseña": "1234",
-        "nombres": "Uded",
-        "apellidos": "Test",
-        "edad": 23,
-        "email": f"deleted_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()
-
-    solicitud = client.post("/solicitudes/", json={
-        "mensaje": "Te envío solicitud",
-        "remitente_id": u1["id_usuario"],
-        "destinatario_id": u2["id_usuario"]
-    }).json()
-
-    delete_resp = client.delete(f"/solicitudes/{solicitud['id_solicitud']}")
-    assert delete_resp.status_code == 200
-    assert delete_resp.json()["detail"] == "Solicitud eliminada correctamente"
+    response = client.delete(f"/solicitudes/{solicitud_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "Solicitud eliminada correctamente"
