@@ -1,46 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models.notificacion import Notificacion
-from app.schemas.notificacion import NotificacionCreate, NotificacionUpdate, NotificacionResponse
 from typing import List
+from app.database import get_db
+from app.schemas.notificacion import NotificacionCreate, NotificacionUpdate, NotificacionResponse
+from app.services.notificacion_service import (
+    crear_notificacion, obtener_notificaciones, obtener_notificacion,
+    actualizar_notificacion, eliminar_notificacion
+)
 
 router = APIRouter(prefix="/notificaciones", tags=["Notificaciones"])
 
 @router.post("/", response_model=NotificacionResponse)
-def create_notificacion(notificacion: NotificacionCreate, db: Session = Depends(get_db)):
-    nueva_notificacion = Notificacion(**notificacion.dict())
-    db.add(nueva_notificacion)
-    db.commit()
-    db.refresh(nueva_notificacion)
-    return nueva_notificacion
+def create_notificacion(request: NotificacionCreate, db: Session = Depends(get_db)):
+    return crear_notificacion(db, request)
 
 @router.get("/", response_model=List[NotificacionResponse])
-def get_notificaciones(db: Session = Depends(get_db)):
-    return db.query(Notificacion).all()
+def list_notificaciones(db: Session = Depends(get_db)):
+    return obtener_notificaciones(db)
 
-@router.get("/{id_notificacion}", response_model=NotificacionResponse)
-def get_notificacion(id_notificacion: int, db: Session = Depends(get_db)):
-    notificacion = db.query(Notificacion).filter(Notificacion.id_notificacion == id_notificacion).first()
-    if not notificacion:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    return notificacion
+@router.get("/{notificacion_id}", response_model=NotificacionResponse)
+def get_notificacion(notificacion_id: int, db: Session = Depends(get_db)):
+    return obtener_notificacion(db, notificacion_id)
 
-@router.put("/{id_notificacion}", response_model=NotificacionResponse)
-def update_notificacion(id_notificacion: int, update: NotificacionUpdate, db: Session = Depends(get_db)):
-    notificacion = db.query(Notificacion).filter(Notificacion.id_notificacion == id_notificacion).first()
-    if not notificacion:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    notificacion.estado = update.estado
-    db.commit()
-    db.refresh(notificacion)
-    return notificacion
+@router.put("/{notificacion_id}", response_model=NotificacionResponse)
+def update_notificacion(notificacion_id: int, request: NotificacionUpdate, db: Session = Depends(get_db)):
+    return actualizar_notificacion(db, notificacion_id, request)
 
-@router.delete("/{id_notificacion}")
-def delete_notificacion(id_notificacion: int, db: Session = Depends(get_db)):
-    notificacion = db.query(Notificacion).filter(Notificacion.id_notificacion == id_notificacion).first()
-    if not notificacion:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    db.delete(notificacion)
-    db.commit()
-    return {"detail": "Notificación eliminada correctamente"}
+@router.delete("/{notificacion_id}")
+def delete_notificacion(notificacion_id: int, db: Session = Depends(get_db)):
+    eliminado = eliminar_notificacion(db, notificacion_id)
+    return {"message": "Notificación eliminada correctamente"} if eliminado else {"message": "No se eliminó"}

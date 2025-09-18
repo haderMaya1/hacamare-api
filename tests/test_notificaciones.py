@@ -1,73 +1,97 @@
+import uuid
+
 def test_create_notificacion(client):
-    # Crear un usuario primero
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "notifuser",
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "notifuser" + uuid.uuid4().hex[:6],
         "contraseña": "1234",
         "nombres": "Notif",
         "apellidos": "User",
         "edad": 25,
-        "email": "notif@test.com",
+        "email": f"notif_{uuid.uuid4().hex[:6]}@test.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["id_usuario"]
+    usuario_id = usuario.json()["data"]["id_usuario"]
 
-    resp = client.post("/notificaciones/", json={
+    response = client.post("/notificaciones/", json={
         "tipo": "advertencia",
-        "contenido": "Has incumplido una norma",
+        "contenido": "Tu publicación fue marcada",
         "id_usuario": usuario_id
     })
-    assert resp.status_code == 200
-    data = resp.json()
+    assert response.status_code == 200
+    data = response.json()
     assert data["tipo"] == "advertencia"
     assert data["estado"] == "activa"
 
 def test_get_notificaciones(client):
-    resp = client.get("/notificaciones/")
-    assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    response = client.get("/notificaciones/")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
-def test_update_notificacion(client):
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "updnotif",
+def test_get_notificacion(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "notifget" + uuid.uuid4().hex[:6],
         "contraseña": "1234",
-        "nombres": "Update",
-        "apellidos": "Notif",
-        "edad": 26,
-        "email": "updnotif@test.com",
-        "id_rol": 1
-    })
-    usuario_id = user_resp.json()["id_usuario"]
-
-    notif_resp = client.post("/notificaciones/", json={
-        "tipo": "eliminacion",
-        "contenido": "Publicación eliminada por infringir reglas",
-        "id_usuario": usuario_id
-    })
-    notif_id = notif_resp.json()["id_notificacion"]
-
-    resp = client.put(f"/notificaciones/{notif_id}", json={"estado": "resuelta"})
-    assert resp.status_code == 200
-    assert resp.json()["estado"] == "resuelta"
-
-def test_delete_notificacion(client):
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "delnotif",
-        "contraseña": "1234",
-        "nombres": "Delete",
+        "nombres": "Get",
         "apellidos": "Notif",
         "edad": 28,
-        "email": "delnotif@test.com",
+        "email": f"notifget_{uuid.uuid4().hex[:6]}@test.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["id_usuario"]
+    usuario_id = usuario.json()["data"]["id_usuario"]
 
-    notif_resp = client.post("/notificaciones/", json={
-        "tipo": "advertencia",
-        "contenido": "Comentario inapropiado",
+    resp = client.post("/notificaciones/", json={
+        "tipo": "eliminacion",
+        "contenido": "Tu comentario fue eliminado",
         "id_usuario": usuario_id
     })
-    notif_id = notif_resp.json()["id_notificacion"]
+    notif_id = resp.json()["id_notificacion"]
 
-    resp = client.delete(f"/notificaciones/{notif_id}")
-    assert resp.status_code == 200
-    assert resp.json()["detail"] == "Notificación eliminada correctamente"
+    response = client.get(f"/notificaciones/{notif_id}")
+    assert response.status_code == 200
+    assert response.json()["id_notificacion"] == notif_id
+
+def test_update_notificacion(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "notifupd" + uuid.uuid4().hex[:6],
+        "contraseña": "1234",
+        "nombres": "Upd",
+        "apellidos": "Notif",
+        "edad": 30,
+        "email": f"notifupd_{uuid.uuid4().hex[:6]}@test.com",
+        "id_rol": 1
+    })
+    usuario_id = usuario.json()["data"]["id_usuario"]
+
+    resp = client.post("/notificaciones/", json={
+        "tipo": "advertencia",
+        "contenido": "Revisa tus publicaciones",
+        "id_usuario": usuario_id
+    })
+    notif_id = resp.json()["id_notificacion"]
+
+    response = client.put(f"/notificaciones/{notif_id}", json={"estado": "resuelta"})
+    assert response.status_code == 200
+    assert response.json()["estado"] == "resuelta"
+
+def test_delete_notificacion(client):
+    usuario = client.post("/usuarios/", json={
+        "nombre_usuario": "notifdel" + uuid.uuid4().hex[:6],
+        "contraseña": "1234",
+        "nombres": "Del",
+        "apellidos": "Notif",
+        "edad": 22,
+        "email": f"notifdel_{uuid.uuid4().hex[:6]}@test.com",
+        "id_rol": 1
+    })
+    usuario_id = usuario.json()["data"]["id_usuario"]
+
+    resp = client.post("/notificaciones/", json={
+        "tipo": "advertencia",
+        "contenido": "Tu sesión fue reportada",
+        "id_usuario": usuario_id
+    })
+    notif_id = resp.json()["id_notificacion"]
+
+    response = client.delete(f"/notificaciones/{notif_id}")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Notificación eliminada correctamente"
