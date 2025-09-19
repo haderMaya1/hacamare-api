@@ -1,57 +1,46 @@
-import pytest
-from app.main import app
-import uuid
+def test_crud_usuario(client):
+    # Crear usuario
+    response = client.post("/usuarios/", json={
+        "nombre_usuario": "newuser",
+        "contraseña": "123456",
+        "nombres": "Nuevo",
+        "apellidos": "Usuario",
+        "edad": 22,
+        "email": "nuevo@example.com",
+        "id_rol": 1
+    }, headers={"Authorization": f"Bearer {get_token(client)}"})
+    assert response.status_code == 201
+    usuario = response.json()
+    assert usuario["nombre_usuario"] == "newuser"
 
-def test_create_usuario(client):
-    unique_email = f"usuario_{uuid.uuid4().hex[:6]}@test.com"
-    response = client.post(
-        "/usuarios/",
-        json={
-            "nombre_usuario": "testuser" + uuid.uuid4().hex[:4],
-            "contraseña": "123456",
-            "nombres": "Test",
-            "apellidos": "User",
-            "edad": 20,
-            "email": unique_email,
-            "id_rol": 1
-        },
-    )
+    usuario_id = usuario["id_usuario"]
+
+    # Obtener usuario
+    response = client.get(f"/usuarios/{usuario_id}", headers={"Authorization": f"Bearer {get_token(client)}"})
     assert response.status_code == 200
-    body = response.json()
-    assert body["message"] == "Usuario creado exitosamente"
-    data = body["data"]
-    assert "id_usuario" in data
-    assert data["nombre_usuario"].startswith("testuser")
+    assert response.json()["email"] == "nuevo@example.com"
 
-def test_get_usuarios(client):
-    response = client.get("/usuarios/")
+    # Actualizar usuario
+    response = client.put(f"/usuarios/{usuario_id}", json={"edad": 30}, headers={"Authorization": f"Bearer {get_token(client)}"})
     assert response.status_code == 200
-    body = response.json()
-    assert body["message"] == "Lista de usuarios"
-    assert isinstance(body["data"], list)
+    assert response.json()["edad"] == 30
 
-def test_get_usuario(client):
-    response = client.get("/usuarios/1")
-    if response.status_code == 200:
-        body = response.json()
-        assert body["message"] == "Usuario encontrado"
-        assert "id_usuario" in body["data"]
-    else:
-        assert response.status_code == 404
+    # Eliminar usuario
+    response = client.delete(f"/usuarios/{usuario_id}", headers={"Authorization": f"Bearer {get_token(client)}"})
+    assert response.status_code == 200
+    assert "eliminado" in response.json()["message"].lower()
 
-def test_update_usuario(client):
-    response = client.put("/usuarios/1", json={"telefono": "123456789"})
-    if response.status_code == 200:
-        body = response.json()
-        assert body["message"] == "Usuario actualizado correctamente"
-        assert "telefono" in body["data"]
-    else:
-        assert response.status_code == 404
 
-def test_delete_usuario(client):
-    response = client.delete("/usuarios/1")
-    if response.status_code == 200:
-        body = response.json()
-        assert body["message"] == "Usuario eliminado correctamente"
-    else:
-        assert response.status_code == 404
+def get_token(client):
+    """Helper para obtener token válido usando auth/login"""
+    client.post("/auth/register", json={
+        "nombre_usuario": "authuser",
+        "contraseña": "123456",
+        "nombres": "Auth",
+        "apellidos": "User",
+        "edad": 20,
+        "email": "auth@example.com",
+        "id_rol": 1
+    })
+    response = client.post("/auth/login", data={"username": "authuser", "password": "123456"})
+    return response.json()["access_token"]
