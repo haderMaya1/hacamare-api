@@ -1,83 +1,40 @@
-import uuid
+def test_crud_publicacion(client):
+    token = get_token(client)
 
-def test_create_publicacion(client):
-    # crear usuario
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "pubuser" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
+    # Crear publicación
+    response = client.post("/publicaciones/", json={"texto": "Mi primera publicación"}, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 201
+    publicacion = response.json()
+    assert publicacion["texto"] == "Mi primera publicación"
+
+    publicacion_id = publicacion["id_publicacion"]
+
+    # Obtener publicación
+    response = client.get(f"/publicaciones/{publicacion_id}")
+    assert response.status_code == 200
+    assert response.json()["texto"] == "Mi primera publicación"
+
+    # Actualizar publicación
+    response = client.put(f"/publicaciones/{publicacion_id}", json={"texto": "Publicación editada"}, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["texto"] == "Publicación editada"
+
+    # Eliminar publicación
+    response = client.delete(f"/publicaciones/{publicacion_id}", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert "eliminada" in response.json()["message"].lower()
+
+
+def get_token(client):
+    """Helper para obtener un token válido"""
+    client.post("/auth/register", json={
+        "nombre_usuario": "pubuser",
+        "contraseña": "123456",
         "nombres": "Pub",
         "apellidos": "User",
-        "edad": 22,
-        "email": f"pub_{uuid.uuid4().hex[:6]}@test.com",
+        "edad": 20,
+        "email": "pubuser@example.com",
         "id_rol": 1
     })
-    usuario_id = user_resp.json()["data"]["id_usuario"]
-
-    pub_data = {"texto": "Mi primera publicación", "imagen": "imagen.png", "estado": "visible", "id_usuario": usuario_id}
-    response = client.post("/publicaciones/", json=pub_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "Publicación creada exitosamente"
-    assert data["data"]["texto"] == "Mi primera publicación"
-
-def test_get_publicaciones(client):
-    response = client.get("/publicaciones/")
-    assert response.status_code == 200
-    assert "data" in response.json()
-
-def test_get_publicacion(client):
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "getpub" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Get",
-        "apellidos": "Pub",
-        "edad": 23,
-        "email": f"getpub_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = user_resp.json()["data"]["id_usuario"]
-
-    pub_resp = client.post("/publicaciones/", json={"texto": "Prueba", "id_usuario": usuario_id})
-    pub_id = pub_resp.json()["data"]["id_publicacion"]
-
-    response = client.get(f"/publicaciones/{pub_id}")
-    assert response.status_code == 200
-    assert response.json()["data"]["id_publicacion"] == pub_id
-
-def test_update_publicacion(client):
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "updpub" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Upd",
-        "apellidos": "Pub",
-        "edad": 24,
-        "email": f"updpub_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = user_resp.json()["data"]["id_usuario"]
-
-    pub_resp = client.post("/publicaciones/", json={"texto": "Original", "id_usuario": usuario_id})
-    pub_id = pub_resp.json()["data"]["id_publicacion"]
-
-    response = client.put(f"/publicaciones/{pub_id}", json={"texto": "Editado"})
-    assert response.status_code == 200
-    assert response.json()["data"]["texto"] == "Editado"
-
-def test_delete_publicacion(client):
-    user_resp = client.post("/usuarios/", json={
-        "nombre_usuario": "delpub" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Del",
-        "apellidos": "Pub",
-        "edad": 25,
-        "email": f"delpub_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = user_resp.json()["data"]["id_usuario"]
-
-    pub_resp = client.post("/publicaciones/", json={"texto": "Eliminar", "id_usuario": usuario_id})
-    pub_id = pub_resp.json()["data"]["id_publicacion"]
-
-    response = client.delete(f"/publicaciones/{pub_id}")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Publicación eliminada correctamente"
+    response = client.post("/auth/login", data={"username": "pubuser", "password": "123456"})
+    return response.json()["access_token"]

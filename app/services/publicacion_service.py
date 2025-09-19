@@ -1,34 +1,60 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 from app.models.publicacion import Publicacion
 from app.schemas.publicacion import PublicacionCreate, PublicacionUpdate
+from app.utils.helpers import not_found_exception
 
-def crear_publicacion(db: Session, publicacion: PublicacionCreate):
-    nueva = Publicacion(**publicacion.dict())
-    db.add(nueva)
+
+def get_publicaciones(db: Session, skip: int = 0, limit: int = 10):
+    return db.query(Publicacion).filter(Publicacion.estado == "visible").offset(skip).limit(limit).all()
+
+
+def get_publicacion(db: Session, publicacion_id: int) -> Publicacion:
+    publicacion = db.query(Publicacion).filter(Publicacion.id_publicacion == publicacion_id).first()
+    if not publicacion:
+        not_found_exception("Publicación", publicacion_id)
+    return publicacion
+
+
+def create_publicacion(db: Session, publicacion: PublicacionCreate, usuario_id: int) -> Publicacion:
+    nueva_publicacion = Publicacion(
+        texto=publicacion.texto,
+        imagen=publicacion.imagen,
+        id_usuario=usuario_id
+    )
+    db.add(nueva_publicacion)
     db.commit()
-    db.refresh(nueva)
-    return nueva
+    db.refresh(nueva_publicacion)
+    return nueva_publicacion
 
-def obtener_publicaciones(db: Session):
-    return db.query(Publicacion).all()
 
-def obtener_publicacion_por_id(db: Session, id_publicacion: int):
-    return db.query(Publicacion).filter(Publicacion.id_publicacion == id_publicacion).first()
+def update_publicacion(db: Session, publicacion_id: int, publicacion_data: PublicacionUpdate, usuario_id: int) -> Publicacion:
+    publicacion = get_publicacion(db, publicacion_id)
 
-def actualizar_publicacion(db: Session, id_publicacion: int, publicacion: PublicacionUpdate):
-    pub = obtener_publicacion_por_id(db, id_publicacion)
-    if not pub:
-        return None
-    for key, value in publicacion.dict(exclude_unset=True).items():
-        setattr(pub, key, value)
+    if publicacion.id_usuario != usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar esta publicación"
+        )
+
+    for key, value in publicacion_data.dict(exclude_unset=True).items():
+        setattr(publicacion, key, value)
+
     db.commit()
-    db.refresh(pub)
-    return pub
+    db.refresh(publicacion)
+    return publicacion
 
-def eliminar_publicacion(db: Session, id_publicacion: int):
-    pub = obtener_publicacion_por_id(db, id_publicacion)
-    if not pub:
-        return None
-    db.delete(pub)
+
+def delete_publicacion(db: Session, publicacion_id: int, usuario_id: int):
+    publicacion = get_publicacion(db, publicacion_id)
+
+    if publicacion.id_usuario != usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar esta publicación"
+        )
+
+    # En lugar de borrar, marcamos como eliminada
+    publicacion.estado = "eliminado"
     db.commit()
-    return pub
+    return {"message": f"Publicación {publicacion_id} eliminada"}
