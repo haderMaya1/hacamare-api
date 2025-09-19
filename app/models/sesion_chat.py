@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, CheckConstraint, func
 from sqlalchemy.orm import relationship
 from app.database import Base
-
+from app.models.usuario_sesion_chat import UsuarioSesionChat
 class SesionChat(Base):
     __tablename__ = "sesion_chat"
 
@@ -14,5 +14,5 @@ class SesionChat(Base):
 
     # Relación con Usuario (anfitrión)
     anfitrion = relationship("Usuario", back_populates="sesiones_chat")
-    usuarios = relationship("Usuario", secondary="usuario_sesion_chat", back_populates="sesiones")
+    usuarios = relationship("Usuario", secondary=UsuarioSesionChat, back_populates="sesiones")
     mensajes = relationship("Mensaje", back_populates="sesion")

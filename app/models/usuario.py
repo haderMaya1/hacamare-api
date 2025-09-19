@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, f
 from sqlalchemy.orm import relationship
 from app.database import Base
 from app.models.usuario_interes import UsuarioInteres
+from app.models.usuario_sesion_chat import UsuarioSesionChat
 
 class Usuario(Base):
     __tablename__ = "usuario"
@@ -30,7 +31,7 @@ class Usuario(Base):
     intereses = relationship("Interes", secondary=UsuarioInteres, back_populates="usuarios")
     publicaciones = relationship("Publicacion", back_populates="usuario", cascade="all, delete-orphan")
     sesiones_chat = relationship("SesionChat", back_populates="anfitrion", cascade="all, delete-orphan")
-    sesiones = relationship("SesionChat", secondary="usuario_sesion_chat", back_populates="usuarios")
+    sesiones = relationship("SesionChat", secondary=UsuarioSesionChat, back_populates="usuarios")
     mensajes = relationship("Mensaje", back_populates="remitente")
     reacciones = relationship("ReaccionPublicacion", back_populates="usuario", cascade="all, delete-orphan")
     comentarios = relationship("Comentario", back_populates="usuario", cascade="all, delete-orphan")

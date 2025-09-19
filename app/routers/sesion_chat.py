@@ -1,56 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
-from app.schemas.sesion_chat import SesionChatCreate, SesionChatUpdate, SesionChatResponse
-from app.services.sesion_chat_service import (
-    crear_sesion_chat,
-    obtener_sesiones_chat,
-    obtener_sesion_chat_por_id,
-    actualizar_sesion_chat,
-    eliminar_sesion_chat
-)
+from app.schemas.sesion_chat import SesionChatCreate, SesionChatResponse, SesionChatUpdate
+from app.services.sesion_chat_service import create_sesion_chat, update_sesion_chat, get_sesion_chat, get_sesiones_chat, delete_sesion_chat
+from app.utils.security import get_current_user
 
-router = APIRouter(prefix="/sesiones_chat", tags=["Sesiones de Chat"])
+router = APIRouter(prefix="/sesiones", tags=["sesiones"])
 
-@router.post("/", response_model=dict)
-def create_sesion_chat(sesion: SesionChatCreate, db: Session = Depends(get_db)):
-    nueva = crear_sesion_chat(db, sesion)
-    return {
-        "message": "Sesión de chat creada exitosamente",
-        "data": SesionChatResponse.model_validate(nueva, from_attributes=True)
-    }
+@router.post("/", response_model=SesionChatResponse, status_code=201)
+def crear_sesion(sesion: SesionChatCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return create_sesion_chat(db, sesion, current_user.id_usuario)
 
-@router.get("/", response_model=dict)
-def get_sesiones_chat(db: Session = Depends(get_db)):
-    sesiones = obtener_sesiones_chat(db)
-    return {
-        "message": "Lista de sesiones de chat",
-        "data": [SesionChatResponse.model_validate(s, from_attributes=True) for s in sesiones]
-    }
+@router.get("/{sesion_id}", response_model=SesionChatResponse)
+def obtener_sesion(sesion_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return get_sesion_chat(db, sesion_id)
 
-@router.get("/{id_sesion}", response_model=dict)
-def get_sesion_chat(id_sesion: int, db: Session = Depends(get_db)):
-    s = obtener_sesion_chat_por_id(db, id_sesion)
-    if not s:
-        raise HTTPException(status_code=404, detail="Sesión de chat no encontrada")
-    return {
-        "message": "Sesión de chat encontrada",
-        "data": SesionChatResponse.model_validate(s, from_attributes=True)
-    }
+@router.get("/", response_model=List[SesionChatResponse])
+def listar_sesiones(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return get_sesiones_chat(db)
 
-@router.put("/{id_sesion}", response_model=dict)
-def update_sesion_chat(id_sesion: int, sesion: SesionChatUpdate, db: Session = Depends(get_db)):
-    s = actualizar_sesion_chat(db, id_sesion, sesion)
-    if not s:
-        raise HTTPException(status_code=404, detail="Sesión de chat no encontrada")
-    return {
-        "message": "Sesión de chat actualizada correctamente",
-        "data": SesionChatResponse.model_validate(s, from_attributes=True)
-    }
+@router.delete("/{sesion_id}")
+def eliminar_sesion(sesion_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return delete_sesion_chat(db, sesion_id, current_user.id_usuario)
 
-@router.delete("/{id_sesion}", response_model=dict)
-def delete_sesion_chat(id_sesion: int, db: Session = Depends(get_db)):
-    s = eliminar_sesion_chat(db, id_sesion)
-    if not s:
-        raise HTTPException(status_code=404, detail="Sesión de chat no encontrada")
-    return {"message": "Sesión de chat eliminada correctamente"}
+@router.put("/{sesion_id}", response_model=SesionChatResponse)
+def actualizar_sesion(sesion_id: int, sesion: SesionChatCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return update_sesion_chat(db, sesion_id, sesion, current_user.id_usuario)

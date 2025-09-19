@@ -4,9 +4,8 @@ from datetime import datetime
 
 class SesionChatBase(BaseModel):
     nombre_tema: str
-    tipo: Optional[str] = "público"
+    tipo: Optional[str]
     estado: Optional[str] = "activa"
-    anfitrion_id: int
 
 class SesionChatCreate(SesionChatBase):
     pass
@@ -19,7 +18,8 @@ class SesionChatUpdate(BaseModel):
 class SesionChatResponse(SesionChatBase):
     id_sesion: int
     fecha_creacion: datetime
-
+    anfitrion_id: int
+    
     class Config:
         orm_mode = True
     

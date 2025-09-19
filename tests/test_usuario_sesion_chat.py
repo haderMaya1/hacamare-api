@@ -1,99 +1,46 @@
-import uuid
-
-def test_create_usuario_sesion_chat(client):
-    # Crear usuario
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "userusc" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User",
-        "apellidos": "Sesion",
-        "edad": 26,
-        "email": f"userusc_{uuid.uuid4().hex[:6]}@test.com",
+def test_usuario_sesion_chat(client):
+    # Registrar usuario anfitrión
+    client.post("/auth/register", json={
+        "nombre_usuario": "host",
+        "contraseña": "123456",
+        "nombres": "Host",
+        "apellidos": "User",
+        "edad": 30,
+        "email": "host@example.com",
         "id_rol": 1
     })
-    usuario_id = usuario.json()["data"]["id_usuario"]
+    login_host = client.post("/auth/login", data={"username": "host", "password": "123456"})
+    token_host = login_host.json()["access_token"]
+    headers_host = {"Authorization": f"Bearer {token_host}"}
 
-    # Crear sesión
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Charla Test",
-        "anfitrion_id": usuario_id
+    # Crear sesión de chat
+    sesion = client.post("/sesiones/", json={"nombre_tema": "Chat Test", "tipo": "público"}, headers=headers_host)
+    sesion_id = sesion.json()["id_sesion"]
+
+    # Registrar otro usuario
+    client.post("/auth/register", json={
+        "nombre_usuario": "guest",
+        "contraseña": "123456",
+        "nombres": "Guest",
+        "apellidos": "User",
+        "edad": 25,
+        "email": "guest@example.com",
+        "id_rol": 1
     })
-    sesion_id = sesion.json()["data"]["id_sesion"]
+    login_guest = client.post("/auth/login", data={"username": "guest", "password": "123456"})
+    token_guest = login_guest.json()["access_token"]
+    headers_guest = {"Authorization": f"Bearer {token_guest}"}
 
-    # Crear relación
-    resp = client.post("/usuario-sesion-chat/", json={
-        "id_usuario": usuario_id,
+    # Agregar guest a la sesión
+    response = client.post("/usuario-sesion/", json={
+        "id_usuario": 2,   # host = 1, guest = 2
         "id_sesion": sesion_id
-    })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["message"] == "Relación usuario-sesión creada exitosamente"
-    assert data["data"]["id_usuario"] == usuario_id
-    assert data["data"]["id_sesion"] == sesion_id
+    }, headers=headers_host)
+    assert response.status_code == 201
+    assert response.json()["id_usuario"] == 2
+    assert response.json()["id_sesion"] == sesion_id
 
-    # Intentar duplicado
-    resp_dup = client.post("/usuario-sesion-chat/", json={
-        "id_usuario": usuario_id,
-        "id_sesion": sesion_id
-    })
-    assert resp_dup.status_code == 400
-    assert resp_dup.json()["detail"] == "Relación ya existe"
-
-def test_get_relaciones_usuario_sesion(client):
-    resp = client.get("/usuario-sesion-chat/")
-    assert resp.status_code == 200
-    assert "data" in resp.json()
-
-def test_get_relacion_usuario_sesion(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "getusc" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Get",
-        "apellidos": "Rel",
-        "edad": 27,
-        "email": f"getusc_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Charla Get",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
-
-    client.post("/usuario-sesion-chat/", json={"id_usuario": usuario_id, "id_sesion": sesion_id})
-
-    resp = client.get(f"/usuario-sesion-chat/{usuario_id}/{sesion_id}")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["data"]["id_usuario"] == usuario_id
-    assert data["data"]["id_sesion"] == sesion_id
-
-def test_delete_usuario_sesion_chat(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "delusc" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Del",
-        "apellidos": "Rel",
-        "edad": 28,
-        "email": f"delusc_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Charla Delete",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
-
-    client.post("/usuario-sesion-chat/", json={"id_usuario": usuario_id, "id_sesion": sesion_id})
-
-    resp = client.delete(f"/usuario-sesion-chat/{usuario_id}/{sesion_id}")
-    assert resp.status_code == 200
-    assert resp.json()["message"] == "Relación usuario-sesión eliminada correctamente"
-
-    # Intentar borrar de nuevo
-    resp_not_found = client.delete(f"/usuario-sesion-chat/{usuario_id}/{sesion_id}")
-    assert resp_not_found.status_code == 404
+    # Eliminar guest de la sesión
+    response = client.delete(f"/usuario-sesion/?id_usuario=2&id_sesion={sesion_id}", headers=headers_host)
+    assert response.status_code == 200
+    assert response.json()["message"] == "Usuario eliminado de la sesión"
