@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from app.database import Base
+from app.models.usuario_interes import UsuarioInteres
 
 class Usuario(Base):
     __tablename__ = "usuario"
@@ -26,6 +27,7 @@ class Usuario(Base):
 
     id_rol = Column(Integer, ForeignKey("rol.id_rol"), nullable=False)
     rol = relationship("Rol", back_populates="usuarios")
+    intereses = relationship("Interes", secondary=UsuarioInteres, back_populates="usuarios")
     publicaciones = relationship("Publicacion", back_populates="usuario", cascade="all, delete-orphan")
     sesiones_chat = relationship("SesionChat", back_populates="anfitrion", cascade="all, delete-orphan")
     sesiones = relationship("SesionChat", secondary="usuario_sesion_chat", back_populates="usuarios")

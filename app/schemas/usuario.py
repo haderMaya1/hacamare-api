@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+from app.schemas.interes import InteresResponse
 
 
 class UsuarioBase(BaseModel):
@@ -38,6 +39,7 @@ class UsuarioResponse(UsuarioBase):
     fecha_registro: datetime
     estado_cuenta: str
     email_verificado: bool
+    intereses: List[InteresResponse] = []
 
     class Config:
         orm_mode = True

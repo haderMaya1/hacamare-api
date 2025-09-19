@@ -32,3 +32,12 @@ def actualizar_usuario(usuario_id: int, usuario_data: UsuarioUpdate, db: Session
 @router.delete("/{usuario_id}")
 def eliminar_usuario(usuario_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return usuario_service.delete_usuario(db, usuario_id)
+
+
+@router.post("/{usuario_id}/intereses/{interes_id}", response_model=UsuarioResponse)
+def agregar_interes(usuario_id: int, interes_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return usuario_service.agregar_interes_usuario(db, usuario_id, interes_id)
+
+@router.delete("/{usuario_id}/intereses/{interes_id}", response_model=UsuarioResponse)
+def quitar_interes(usuario_id: int, interes_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return usuario_service.quitar_interes_usuario(db, usuario_id, interes_id)

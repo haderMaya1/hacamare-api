@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.models.usuario import Usuario
+from app.models.interes import Interes
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
+from fastapi import HTTPException
 from app.utils.security import hash_password
 from app.utils.helpers import not_found_exception
 
@@ -51,3 +53,23 @@ def delete_usuario(db: Session, usuario_id: int):
     db.delete(usuario)
     db.commit()
     return {"message": f"Usuario {usuario_id} eliminado"}
+
+def agregar_interes_usuario(db: Session, usuario_id: int, interes_id: int):
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    interes = db.query(Interes).filter(Interes.id_interes == interes_id).first()
+    if not usuario or not interes:
+        raise HTTPException(status_code=404, detail="Usuario o interés no encontrado")
+    usuario.intereses.append(interes)
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+def quitar_interes_usuario(db: Session, usuario_id: int, interes_id: int):
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    interes = db.query(Interes).filter(Interes.id_interes == interes_id).first()
+    if not usuario or not interes:
+        raise HTTPException(status_code=404, detail="Usuario o interés no encontrado")
+    usuario.intereses.remove(interes)
+    db.commit()
+    db.refresh(usuario)
+    return usuario
