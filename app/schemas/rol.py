@@ -3,20 +3,19 @@ from typing import Optional, Dict
 
 class RolBase(BaseModel):
     nombre: str
-    permisos: Optional[Dict[str, str]] = None  # Dict para representar JSON
-
-    model_config = {"from_attributes": True}  # equivale a orm_mode=True en Pydantic v2
+    permisos: Optional[Dict] = {}
 
 class RolCreate(RolBase):
     pass
 
 class RolUpdate(BaseModel):
     nombre: Optional[str] = None
-    permisos: Optional[Dict[str, str]] = None
+    permisos: Optional[Dict] = None
 
-    model_config = {"from_attributes": True}
-
-class RolResponse(RolBase):
+class RolResponse(BaseModel):
     id_rol: int
+    nombre: str
+    permisos_dict: Dict   # usamos la propiedad, no la columna raw
 
-    model_config = {"from_attributes": True}
+    class Config:
+        orm_mode = True

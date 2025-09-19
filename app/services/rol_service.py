@@ -1,40 +1,38 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 from app.models.rol import Rol
 from app.schemas.rol import RolCreate, RolUpdate
-import json
 
-def crear_rol(db: Session, rol: RolCreate):
-    nuevo_rol = Rol(
-        nombre=rol.nombre,
-        permisos=json.dumps(rol.permisos or {})
-    )
+def create_rol(db: Session, rol: RolCreate):
+    nuevo_rol = Rol(nombre=rol.nombre)
+    if rol.permisos:
+        nuevo_rol.set_permisos(rol.permisos)
     db.add(nuevo_rol)
     db.commit()
     db.refresh(nuevo_rol)
     return nuevo_rol
 
-def obtener_roles(db: Session):
+def get_roles(db: Session):
     return db.query(Rol).all()
 
-def obtener_rol_por_id(db: Session, rol_id: int):
-    return db.query(Rol).filter(Rol.id_rol == rol_id).first()
+def get_rol(db: Session, rol_id: int):
+    rol = db.query(Rol).filter(Rol.id_rol == rol_id).first()
+    if not rol:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rol no encontrado")
+    return rol
 
-def actualizar_rol(db: Session, rol_id: int, rol: RolUpdate):
-    db_rol = db.query(Rol).filter(Rol.id_rol == rol_id).first()
-    if not db_rol:
-        return None
-    if rol.nombre is not None:
-        db_rol.nombre = rol.nombre
-    if rol.permisos is not None:
-        db_rol.permisos = json.dumps(rol.permisos)
+def update_rol(db: Session, rol_id: int, rol_update: RolUpdate):
+    rol = get_rol(db, rol_id)
+    if rol_update.nombre:
+        rol.nombre = rol_update.nombre
+    if rol_update.permisos is not None:
+        rol.set_permisos(rol_update.permisos)
     db.commit()
-    db.refresh(db_rol)
-    return db_rol
+    db.refresh(rol)
+    return rol
 
-def eliminar_rol(db: Session, rol_id: int):
-    db_rol = db.query(Rol).filter(Rol.id_rol == rol_id).first()
-    if not db_rol:
-        return None
-    db.delete(db_rol)
+def delete_rol(db: Session, rol_id: int):
+    rol = get_rol(db, rol_id)
+    db.delete(rol)
     db.commit()
-    return db_rol
+    return {"message": "Rol eliminado correctamente"}

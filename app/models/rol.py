@@ -19,3 +19,8 @@ class Rol(Base):
     def get_permisos(self) -> dict:
         """Convierte JSON string → dict al leer desde DB"""
         return json.loads(self.permisos or "{}")
+
+    @property
+    def permisos_dict(self) -> dict:
+        """Propiedad para exponer permisos como dict a Pydantic"""
+        return self.get_permisos()

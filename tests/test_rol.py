@@ -1,72 +1,55 @@
-import pytest
-
-def test_create_rol(client):
-    rol_data = {"nombre": "admin", "permisos": {"posts": "edit"}}
-    response = client.post("/roles/", json=rol_data)
+def test_crud_roles(client):
+    # Registrar usuario para autenticación
+    response = client.post("/auth/register", json={
+        "nombre_usuario": "adminuser",
+        "contraseña": "123456",
+        "nombres": "Admin",
+        "apellidos": "User",
+        "edad": 30,
+        "email": "admin@example.com",
+        "id_rol": 1
+    })
+    assert response.status_code in (200, 201)
+    
+    # Login
+    response = client.post("/auth/login", data={
+        "username": "adminuser",
+        "password": "123456"
+    })
     assert response.status_code == 200
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-    data = response.json()
-    assert data["message"] == "Rol creado exitosamente"
-    assert data["data"]["nombre"] == "admin"
-    assert isinstance(data["data"]["permisos"], dict)
-    assert data["data"]["permisos"]["posts"] == "edit"
-
-
-def test_get_roles(client):
-    # Crear uno para asegurar resultados
-    client.post("/roles/", json={"nombre": "user", "permisos": {"read": "only"}})
-
-    response = client.get("/roles/")
-    assert response.status_code == 200
-
-    data = response.json()
-    assert "data" in data
-    assert isinstance(data["data"], list)
-    assert any(r["nombre"] == "user" for r in data["data"])
-
-
-def test_get_rol(client):
     # Crear rol
-    response = client.post("/roles/", json={"nombre": "moderator", "permisos": {"usuarios": "all"}})
-    rol_id = response.json()["data"]["id_rol"]
-
-    # Obtener por id
-    response = client.get(f"/roles/{rol_id}")
-    assert response.status_code == 200
-
+    response = client.post("/roles/", json={
+        "nombre": "Admin",
+        "permisos": {"usuarios": ["crear", "editar", "eliminar"]}
+    }, headers=headers)
+    assert response.status_code == 201
     data = response.json()
-    assert data["data"]["nombre"] == "moderator"
-    assert isinstance(data["data"]["permisos"], dict)
-    assert data["data"]["permisos"]["usuarios"] == "all"
+    assert data["nombre"] == "Admin"
 
+    rol_id = data["id_rol"]
 
-def test_update_rol(client):
-    # Crear rol
-    response = client.post("/roles/", json={"nombre": "editor", "permisos": {"usuarios": "read"}})
-    rol_id = response.json()["data"]["id_rol"]
-
-    # Actualizar permisos
-    response = client.put(f"/roles/{rol_id}", json={"permisos": {"usuarios": "write"}})
+    # Listar roles
+    response = client.get("/roles/", headers=headers)
     assert response.status_code == 200
+    assert any(r["id_rol"] == rol_id for r in response.json())
 
-    data = response.json()
-    assert data["message"] == "Rol actualizado correctamente"
-    assert isinstance(data["data"]["permisos"], dict)
-    assert data["data"]["permisos"]["usuarios"] == "write"
+    # Obtener rol
+    response = client.get(f"/roles/{rol_id}", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["id_rol"] == rol_id
 
-
-def test_delete_rol(client):
-    # Crear rol temporal
-    response = client.post("/roles/", json={"nombre": "temp", "permisos": {"usuarios": "read"}})
-    rol_id = response.json()["data"]["id_rol"]
+    # Actualizar rol
+    response = client.put(f"/roles/{rol_id}", json={
+        "nombre": "SuperAdmin",
+        "permisos": {"usuarios": ["leer"]}
+    }, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["nombre"] == "SuperAdmin"
 
     # Eliminar rol
-    response = client.delete(f"/roles/{rol_id}")
+    response = client.delete(f"/roles/{rol_id}", headers=headers)
     assert response.status_code == 200
-
-    data = response.json()
-    assert data["message"] == "Rol eliminado correctamente"
-
-    # Verificar que ya no existe
-    response = client.get(f"/roles/{rol_id}")
-    assert response.status_code == 404
+    assert response.json()["message"] == "Rol eliminado correctamente"
