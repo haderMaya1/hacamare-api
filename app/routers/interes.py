@@ -1,56 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
-from app.schemas.interes import InteresCreate, InteresUpdate, InteresResponse
-from app.services.interes_service import (
-    crear_interes,
-    obtener_intereses,
-    obtener_interes_por_id,
-    actualizar_interes,
-    eliminar_interes,
-)
+from app.services import interes_service
+from app.schemas.interes import InteresCreate, InteresResponse, InteresUpdate
+from app.utils.security import get_current_user
 
-router = APIRouter(prefix="/intereses", tags=["Intereses"])
+router = APIRouter(prefix="/intereses", tags=["intereses"])
 
-@router.post("/", response_model=dict)
-def create_interes(interes: InteresCreate, db: Session = Depends(get_db)):
-    nuevo_interes = crear_interes(db, interes)
-    return {
-        "message": "Interés creado exitosamente",
-        "data": InteresResponse.model_validate(nuevo_interes, from_attributes=True)
-    }
+@router.post("/", response_model=InteresResponse, status_code=201)
+def crear_interes(interes: InteresCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return interes_service.create_interes(db, interes)
 
-@router.get("/", response_model=dict)
-def get_intereses(db: Session = Depends(get_db)):
-    intereses = obtener_intereses(db)
-    return {
-        "message": "Lista de intereses",
-        "data": [InteresResponse.model_validate(i, from_attributes=True) for i in intereses]
-    }
+@router.get("/", response_model=List[InteresResponse])
+def listar_intereses(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return interes_service.get_intereses(db)
 
-@router.get("/{interes_id}", response_model=dict)
-def get_interes(interes_id: int, db: Session = Depends(get_db)):
-    interes = obtener_interes_por_id(db, interes_id)
-    if not interes:
-        raise HTTPException(status_code=404, detail="Interés no encontrado")
-    return {
-        "message": "Interés encontrado",
-        "data": InteresResponse.model_validate(interes, from_attributes=True)
-    }
+@router.get("/{interes_id}", response_model=InteresResponse)
+def obtener_interes(interes_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return interes_service.get_interes(db, interes_id)
 
-@router.put("/{interes_id}", response_model=dict)
-def update_interes(interes_id: int, interes: InteresUpdate, db: Session = Depends(get_db)):
-    actualizado = actualizar_interes(db, interes_id, interes)
-    if not actualizado:
-        raise HTTPException(status_code=404, detail="Interés no encontrado")
-    return {
-        "message": "Interés actualizado correctamente",
-        "data": InteresResponse.model_validate(actualizado, from_attributes=True)
-    }
+@router.put("/{interes_id}", response_model=InteresResponse)
+def actualizar_interes(interes_id: int, interes: InteresUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return interes_service.update_interes(db, interes_id, interes)
 
-@router.delete("/{interes_id}", response_model=dict)
-def delete_interes(interes_id: int, db: Session = Depends(get_db)):
-    eliminado = eliminar_interes(db, interes_id)
-    if not eliminado:
-        raise HTTPException(status_code=404, detail="Interés no encontrado")
-    return {"message": "Interés eliminado correctamente"}
+@router.delete("/{interes_id}")
+def eliminar_interes(interes_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return interes_service.delete_interes(db, interes_id)

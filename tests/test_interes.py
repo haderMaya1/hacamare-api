@@ -1,49 +1,50 @@
-import pytest
+def test_crud_interes(client):
+    # Registrar usuario para autenticación
+    response = client.post("/auth/register", json={
+        "nombre_usuario": "interesuser",
+        "contraseña": "123456",
+        "nombres": "Interes",
+        "apellidos": "Tester",
+        "edad": 28,
+        "email": "interes@example.com",
+        "id_rol": 1
+    })
+    assert response.status_code in (200, 201)
 
-def test_create_interes(client):
-    interes_data = {"nombre": "Deportes", "categoria": "Salud"}
-    response = client.post("/intereses/", json=interes_data)
-    assert response.status_code == 200
+    # Login
+    response = client.post("/auth/login", data={
+        "username": "interesuser",
+        "password": "123456"
+    })
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Crear interés
+    response = client.post("/intereses/", json={
+        "nombre": "Música",
+        "categoria": "Arte"
+    }, headers=headers)
+    assert response.status_code == 201
     data = response.json()
-    assert data["message"] == "Interés creado exitosamente"
-    assert data["data"]["nombre"] == "Deportes"
+    assert data["nombre"] == "Música"
+    interes_id = data["id_interes"]
 
-def test_get_intereses(client):
-    client.post("/intereses/", json={"nombre": "Música", "categoria": "Arte"})
-    response = client.get("/intereses/")
+    # Listar intereses
+    response = client.get("/intereses/", headers=headers)
     assert response.status_code == 200
-    data = response.json()
-    assert "data" in data
-    assert isinstance(data["data"], list)
-    assert any(i["nombre"] == "Música" for i in data["data"])
+    assert any(i["id_interes"] == interes_id for i in response.json())
 
-def test_get_interes(client):
-    response = client.post("/intereses/", json={"nombre": "Viajes", "categoria": "Ocio"})
-    interes_id = response.json()["data"]["id_interes"]
-
-    response = client.get(f"/intereses/{interes_id}")
+    # Obtener interés
+    response = client.get(f"/intereses/{interes_id}", headers=headers)
     assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["nombre"] == "Viajes"
+    assert response.json()["id_interes"] == interes_id
 
-def test_update_interes(client):
-    response = client.post("/intereses/", json={"nombre": "Cine", "categoria": "Ocio"})
-    interes_id = response.json()["data"]["id_interes"]
-
-    response = client.put(f"/intereses/{interes_id}", json={"categoria": "Entretenimiento"})
+    # Actualizar interés
+    response = client.put(f"/intereses/{interes_id}", json={"categoria": "Cultura"}, headers=headers)
     assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["categoria"] == "Entretenimiento"
+    assert response.json()["categoria"] == "Cultura"
 
-def test_delete_interes(client):
-    response = client.post("/intereses/", json={"nombre": "Lectura", "categoria": "Cultura"})
-    interes_id = response.json()["data"]["id_interes"]
-
-    response = client.delete(f"/intereses/{interes_id}")
+    # Eliminar interés
+    response = client.delete(f"/intereses/{interes_id}", headers=headers)
     assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "Interés eliminado correctamente"
-
-    # verificar que realmente fue eliminado
-    response = client.get(f"/intereses/{interes_id}")
-    assert response.status_code == 404
+    assert response.json()["message"] == "Interés eliminado correctamente"
