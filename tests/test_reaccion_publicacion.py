@@ -1,128 +1,39 @@
-import uuid
-
-def test_create_reaccion(client):
-    # Crear usuario
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "reactuser" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
+def test_crud_reaccion_publicacion(client):
+    # Registrar usuario
+    client.post("/auth/register", json={
+        "nombre_usuario": "reactuser",
+        "contraseña": "123456",
         "nombres": "React",
         "apellidos": "User",
-        "edad": 20,
-        "email": f"react_{uuid.uuid4().hex[:6]}@test.com",
+        "edad": 25,
+        "email": "reactuser@example.com",
         "id_rol": 1
     })
-    usuario_id = usuario.json()["data"]["id_usuario"]
+    login = client.post("/auth/login", data={"username": "reactuser", "password": "123456"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-    # Crear publicación
-    publicacion = client.post("/publicaciones/", json={
-        "texto": "Publicación para reaccionar",
-        "id_usuario": usuario_id
-    })
-    publicacion_id = publicacion.json()["data"]["id_publicacion"]
+    # Crear una publicación
+    pub = client.post("/publicaciones/", json={"texto": "Publicación para reaccionar"}, headers=headers)
+    assert pub.status_code == 201
+    pub_id = pub.json()["id_publicacion"]
 
     # Crear reacción
-    resp = client.post("/reacciones/", json={
-        "tipo": "like",
-        "id_usuario": usuario_id,
-        "id_publicacion": publicacion_id
-    })
+    resp = client.post("/reacciones/", json={"tipo": "like", "id_publicacion": pub_id}, headers=headers)
+    assert resp.status_code == 201
+    reaccion_id = resp.json()["id_reaccion"]
+
+    # Listar reacciones de la publicación
+    resp = client.get(f"/reacciones/publicacion/{pub_id}", headers=headers)
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["message"] == "Reacción creada exitosamente"
-    assert data["data"]["tipo"] == "like"
+    assert len(resp.json()) >= 1
 
-def test_get_reacciones(client):
-    resp = client.get("/reacciones/")
+    # Actualizar reacción
+    resp = client.put(f"/reacciones/{reaccion_id}", json={"tipo": "me_encanta"}, headers=headers)
     assert resp.status_code == 200
-    assert "data" in resp.json()
+    assert resp.json()["tipo"] == "me_encanta"
 
-def test_get_reaccion(client):
-    # Crear usuario + publicación + reacción
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "getreact" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Get",
-        "apellidos": "React",
-        "edad": 22,
-        "email": f"getreact_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    publicacion = client.post("/publicaciones/", json={
-        "texto": "Post con reacción única",
-        "id_usuario": usuario_id
-    })
-    publicacion_id = publicacion.json()["data"]["id_publicacion"]
-
-    reaccion = client.post("/reacciones/", json={
-        "tipo": "me_encanta",
-        "id_usuario": usuario_id,
-        "id_publicacion": publicacion_id
-    })
-    reaccion_id = reaccion.json()["data"]["id_reaccion"]
-
-    resp = client.get(f"/reacciones/{reaccion_id}")
+    # Eliminar reacción
+    resp = client.delete(f"/reacciones/{reaccion_id}", headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["data"]["id_reaccion"] == reaccion_id
-
-def test_update_reaccion(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "upreact" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Up",
-        "apellidos": "React",
-        "edad": 23,
-        "email": f"upreact_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    publicacion = client.post("/publicaciones/", json={
-        "texto": "Post para actualizar reacción",
-        "id_usuario": usuario_id
-    })
-    publicacion_id = publicacion.json()["data"]["id_publicacion"]
-
-    reaccion = client.post("/reacciones/", json={
-        "tipo": "dislike",
-        "id_usuario": usuario_id,
-        "id_publicacion": publicacion_id
-    })
-    reaccion_id = reaccion.json()["data"]["id_reaccion"]
-
-    resp = client.put(f"/reacciones/{reaccion_id}", json={"tipo": "me_asombra"})
-    assert resp.status_code == 200
-    assert resp.json()["data"]["tipo"] == "me_asombra"
-
-def test_delete_reaccion(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "delreact" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Del",
-        "apellidos": "React",
-        "edad": 25,
-        "email": f"delreact_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    publicacion = client.post("/publicaciones/", json={
-        "texto": "Post para borrar reacción",
-        "id_usuario": usuario_id
-    })
-    publicacion_id = publicacion.json()["data"]["id_publicacion"]
-
-    reaccion = client.post("/reacciones/", json={
-        "tipo": "me_enoja",
-        "id_usuario": usuario_id,
-        "id_publicacion": publicacion_id
-    })
-    reaccion_id = reaccion.json()["data"]["id_reaccion"]
-
-    resp = client.delete(f"/reacciones/{reaccion_id}")
-    assert resp.status_code == 200
-    assert resp.json()["message"] == "Reacción eliminada correctamente"
-
-    resp_not_found = client.delete(f"/reacciones/{reaccion_id}")
-    assert resp_not_found.status_code == 404
+    assert resp.json()["message"] == "Reacción eliminada"

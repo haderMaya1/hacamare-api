@@ -1,23 +1,21 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
-class ReaccionPublicacionBase(BaseModel):
-    tipo: str
-    id_usuario: int
+class ReaccionBase(BaseModel):
+    tipo: str  # like, dislike, me_encanta, etc.
     id_publicacion: int
 
-class ReaccionPublicacionCreate(ReaccionPublicacionBase):
+class ReaccionCreate(ReaccionBase):
     pass
 
-class ReaccionPublicacionUpdate(BaseModel):
-    tipo: str
+class ReaccionUpdate(BaseModel):
+    tipo: Optional[str] = None
 
-class ReaccionPublicacionResponse(ReaccionPublicacionBase):
+class ReaccionResponse(ReaccionBase):
     id_reaccion: int
     fecha_reaccion: datetime
-
-    class Config:
-        orm_mode = True
+    id_usuario: int
 
     class Config:
         from_attributes = True
