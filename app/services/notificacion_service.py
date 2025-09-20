@@ -1,41 +1,38 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from app.models.notificacion import Notificacion
 from app.schemas.notificacion import NotificacionCreate, NotificacionUpdate
 
-def crear_notificacion(db: Session, notificacion: NotificacionCreate):
-    nueva = Notificacion(**notificacion.dict())
-    db.add(nueva)
+def crear_notificacion(db: Session, data: NotificacionCreate):
+    notif = Notificacion(**data.dict())
+    db.add(notif)
     db.commit()
-    db.refresh(nueva)
-    return nueva
+    db.refresh(notif)
+    return notif
 
-def obtener_notificaciones(db: Session):
+def listar_notificaciones(db: Session):
     return db.query(Notificacion).all()
 
-def obtener_notificacion(db: Session, notificacion_id: int):
-    noti = db.query(Notificacion).filter(Notificacion.id_notificacion == notificacion_id).first()
-    if not noti:
+def obtener_notificacion(db: Session, notif_id: int):
+    notif = db.query(Notificacion).filter_by(id_notificacion=notif_id).first()
+    if not notif:
         raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    return noti
+    return notif
 
-def actualizar_notificacion(db: Session, notificacion_id: int, cambios: NotificacionUpdate):
-    noti = db.query(Notificacion).filter(Notificacion.id_notificacion == notificacion_id).first()
-    if not noti:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    
-    for key, value in cambios.dict(exclude_unset=True).items():
-        setattr(noti, key, value)
-
+def actualizar_notificacion(db: Session, notif_id: int, data: NotificacionUpdate):
+    notif = obtener_notificacion(db, notif_id)
+    if data.tipo is not None:
+        notif.tipo = data.tipo
+    if data.contenido is not None:
+        notif.contenido = data.contenido
+    if data.estado is not None:
+        notif.estado = data.estado
     db.commit()
-    db.refresh(noti)
-    return noti
+    db.refresh(notif)
+    return notif
 
-def eliminar_notificacion(db: Session, notificacion_id: int):
-    noti = db.query(Notificacion).filter(Notificacion.id_notificacion == notificacion_id).first()
-    if not noti:
-        raise HTTPException(status_code=404, detail="Notificación no encontrada")
-    
-    db.delete(noti)
+def eliminar_notificacion(db: Session, notif_id: int):
+    notif = obtener_notificacion(db, notif_id)
+    db.delete(notif)
     db.commit()
-    return True
+    return {"message": "Notificación eliminada correctamente"}

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from datetime import datetime
 from typing import Optional
+from datetime import datetime
 
 class NotificacionBase(BaseModel):
     tipo: str
@@ -15,6 +15,7 @@ class NotificacionCreate(NotificacionBase):
     pass
 
 class NotificacionUpdate(BaseModel):
+    tipo: Optional[str] = None
     contenido: Optional[str] = None
     estado: Optional[str] = None
 
@@ -23,4 +24,5 @@ class NotificacionResponse(NotificacionBase):
     fecha: datetime
 
     class Config:
+        orm_mode = True
         from_attributes = True
