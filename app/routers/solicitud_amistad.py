@@ -1,51 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
-from app.schemas.solicitud_amistad import (
-    SolicitudAmistadCreate, SolicitudAmistadUpdate, SolicitudAmistadResponse
-)
-from app.services.solicitud_amistad_service import (
-    crear_solicitud, obtener_solicitudes, obtener_solicitud,
-    actualizar_solicitud, eliminar_solicitud
-)
+from app.schemas.solicitud_amistad import SolicitudCreate, SolicitudUpdate, SolicitudResponse
+from app.services import solicitud_amistad_service as service
+from app.utils.security import get_current_user
 
-router = APIRouter(prefix="/solicitudes", tags=["Solicitudes de Amistad"])
+router = APIRouter(prefix="/solicitudes", tags=["Solicitudes"])
 
-@router.post("/", response_model=dict)
-def create_solicitud(solicitud: SolicitudAmistadCreate, db: Session = Depends(get_db)):
-    nueva = crear_solicitud(db, solicitud)
-    return {
-        "message": "Solicitud enviada exitosamente",
-        "data": SolicitudAmistadResponse.model_validate(nueva, from_attributes=True)
-    }
+@router.post("/", response_model=SolicitudResponse, status_code=status.HTTP_201_CREATED)
+def crear(data: SolicitudCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.crear_solicitud(db, current_user.id_usuario, data)
 
-@router.get("/", response_model=dict)
-def read_solicitudes(db: Session = Depends(get_db)):
-    solicitudes = obtener_solicitudes(db)
-    return {
-        "data": [SolicitudAmistadResponse.model_validate(s, from_attributes=True) for s in solicitudes]
-    }
+@router.get("/", response_model=List[SolicitudResponse])
+def listar(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.listar_solicitudes(db, current_user.id_usuario)
 
-@router.get("/{id_solicitud}", response_model=dict)
-def read_solicitud(id_solicitud: int, db: Session = Depends(get_db)):
-    solicitud = obtener_solicitud(db, id_solicitud)
-    if not solicitud:
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    return {"data": SolicitudAmistadResponse.model_validate(solicitud, from_attributes=True)}
+@router.put("/{solicitud_id}", response_model=SolicitudResponse)
+def actualizar(solicitud_id: int, data: SolicitudUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.actualizar_estado(db, solicitud_id, current_user.id_usuario, data)
 
-@router.put("/{id_solicitud}", response_model=dict)
-def update_solicitud(id_solicitud: int, solicitud_data: SolicitudAmistadUpdate, db: Session = Depends(get_db)):
-    solicitud = actualizar_solicitud(db, id_solicitud, solicitud_data)
-    if not solicitud:
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    return {
-        "message": "Solicitud actualizada correctamente",
-        "data": SolicitudAmistadResponse.model_validate(solicitud, from_attributes=True)
-    }
-
-@router.delete("/{id_solicitud}", response_model=dict)
-def delete_solicitud(id_solicitud: int, db: Session = Depends(get_db)):
-    solicitud = eliminar_solicitud(db, id_solicitud)
-    if not solicitud:
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    return {"message": "Solicitud eliminada correctamente"}
+@router.delete("/{solicitud_id}")
+def eliminar(solicitud_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.eliminar_solicitud(db, solicitud_id, current_user.id_usuario)

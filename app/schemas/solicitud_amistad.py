@@ -1,23 +1,25 @@
 from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 
-class SolicitudAmistadBase(BaseModel):
-    mensaje: str | None = None
-    estado: str | None = "pendiente"
-
-class SolicitudAmistadCreate(SolicitudAmistadBase):
-    remitente_id: int
+class SolicitudBase(BaseModel):
     destinatario_id: int
+    mensaje: Optional[str] = None
 
-class SolicitudAmistadUpdate(BaseModel):
-    mensaje: str | None = None
-    estado: str | None = None
+class SolicitudCreate(SolicitudBase):
+    pass
 
-class SolicitudAmistadResponse(SolicitudAmistadBase):
+class SolicitudUpdate(BaseModel):
+    estado: str  # "aceptada" o "rechazada"
+
+class SolicitudResponse(BaseModel):
     id_solicitud: int
+    mensaje: Optional[str]
+    estado: str
+    fecha_envio: datetime
     remitente_id: int
     destinatario_id: int
-    fecha_envio: datetime
 
     class Config:
+        orm_mode = True
         from_attributes = True

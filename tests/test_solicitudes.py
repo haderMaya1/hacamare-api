@@ -1,57 +1,50 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+def test_crud_solicitud_amistad(client):
+    # Registrar usuarios
+    client.post("/auth/register", json={
+        "nombre_usuario": "user1",
+        "contraseña": "123456",
+        "nombres": "User",
+        "apellidos": "One",
+        "edad": 25,
+        "email": "user1@example.com",
+        "id_rol": 1
+    })
+    client.post("/auth/register", json={
+        "nombre_usuario": "user2",
+        "contraseña": "123456",
+        "nombres": "User",
+        "apellidos": "Two",
+        "edad": 26,
+        "email": "user2@example.com",
+        "id_rol": 1
+    })
 
-@pytest.fixture
-def solicitud_data():
-    return {
-        "mensaje": "¿Quieres ser mi amigo?",
-        "estado": "pendiente",
-        "remitente_id": 1,
-        "destinatario_id": 2
-    }
+    # Login user1
+    login1 = client.post("/auth/login", data={"username": "user1", "password": "123456"})
+    token1 = login1.json()["access_token"]
+    headers1 = {"Authorization": f"Bearer {token1}"}
 
-def test_create_solicitud(client, solicitud_data):
-    response = client.post("/solicitudes/", json=solicitud_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert "data" in data
-    assert data["data"]["mensaje"] == solicitud_data["mensaje"]
-    assert data["data"]["remitente_id"] == solicitud_data["remitente_id"]
-    assert data["data"]["destinatario_id"] == solicitud_data["destinatario_id"]
+    # Login user2
+    login2 = client.post("/auth/login", data={"username": "user2", "password": "123456"})
+    token2 = login2.json()["access_token"]
+    headers2 = {"Authorization": f"Bearer {token2}"}
 
-def test_get_solicitudes(client):
-    response = client.get("/solicitudes/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "data" in data
-    assert isinstance(data["data"], list)
+    # Crear solicitud
+    r = client.post("/solicitudes/", json={"destinatario_id": 2, "mensaje": "¡Hola!"}, headers=headers1)
+    assert r.status_code == 201
+    solicitud_id = r.json()["id_solicitud"]
 
-def test_get_solicitud(client, solicitud_data):
-    # Primero creamos una solicitud
-    create_response = client.post("/solicitudes/", json=solicitud_data)
-    solicitud_id = create_response.json()["data"]["id_solicitud"]
+    # Listar solicitudes
+    r = client.get("/solicitudes/", headers=headers1)
+    assert r.status_code == 200
+    assert len(r.json()) >= 1
 
-    response = client.get(f"/solicitudes/{solicitud_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["id_solicitud"] == solicitud_id
+    # Aceptar solicitud (user2)
+    r = client.put(f"/solicitudes/{solicitud_id}", json={"estado": "aceptada"}, headers=headers2)
+    assert r.status_code == 200
+    assert r.json()["estado"] == "aceptada"
 
-def test_update_solicitud(client, solicitud_data):
-    create_response = client.post("/solicitudes/", json=solicitud_data)
-    solicitud_id = create_response.json()["data"]["id_solicitud"]
-
-    update_data = {"estado": "aceptada"}
-    response = client.put(f"/solicitudes/{solicitud_id}", json=update_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["estado"] == "aceptada"
-
-def test_delete_solicitud(client, solicitud_data):
-    create_response = client.post("/solicitudes/", json=solicitud_data)
-    solicitud_id = create_response.json()["data"]["id_solicitud"]
-
-    response = client.delete(f"/solicitudes/{solicitud_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "Solicitud eliminada correctamente"
+    # Eliminar solicitud (user1)
+    r = client.delete(f"/solicitudes/{solicitud_id}", headers=headers1)
+    assert r.status_code == 200
+    assert r.json()["message"] == "Solicitud eliminada"
