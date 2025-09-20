@@ -1,40 +1,58 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 from app.models.comentario import Comentario
 from app.schemas.comentario import ComentarioCreate, ComentarioUpdate
+from app.models.usuario import Usuario
+from app.models.publicacion import Publicacion
 
-def crear_comentario(db: Session, comentario: ComentarioCreate):
-    nuevo = Comentario(**comentario.dict())
-    db.add(nuevo)
+def crear_comentario(db: Session, data: ComentarioCreate, id_usuario: int):
+    # Validar existencia de publicación
+    publicacion = db.query(Publicacion).filter_by(id_publicacion=data.id_publicacion).first()
+    if not publicacion:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+    # Validar comentario padre (si existe)
+    if data.id_comentario_padre:
+        padre = db.query(Comentario).filter_by(id_comentario=data.id_comentario_padre).first()
+        if not padre:
+            raise HTTPException(status_code=404, detail="Comentario padre no encontrado")
+
+    comentario = Comentario(
+        contenido=data.contenido,
+        estado=data.estado,
+        id_publicacion=data.id_publicacion,
+        id_usuario=id_usuario,
+        id_comentario_padre=data.id_comentario_padre,
+        imagen=data.imagen
+    )
+    db.add(comentario)
     db.commit()
-    db.refresh(nuevo)
-    return nuevo
+    db.refresh(comentario)
+    return comentario
 
-def obtener_comentarios(db: Session):
-    return db.query(Comentario).all()
+def obtener_comentario(db: Session, comentario_id: int):
+    comentario = db.query(Comentario).filter_by(id_comentario=comentario_id).first()
+    if not comentario:
+        raise HTTPException(status_code=404, detail="Comentario no encontrado")
+    return comentario
 
-def obtener_comentario_por_id(db: Session, id_comentario: int):
-    return db.query(Comentario).filter(Comentario.id_comentario == id_comentario).first()
+def listar_comentarios(db: Session, publicacion_id: int):
+    return db.query(Comentario).filter_by(id_publicacion=publicacion_id).all()
 
-def obtener_comentarios_por_publicacion(db: Session, id_publicacion: int):
-    return db.query(Comentario).filter(Comentario.id_publicacion == id_publicacion).all()
-
-def obtener_respuestas(db: Session, id_comentario: int):
-    return db.query(Comentario).filter(Comentario.id_comentario_padre == id_comentario).all()
-
-def actualizar_comentario(db: Session, id_comentario: int, comentario: ComentarioUpdate):
-    db_comentario = obtener_comentario_por_id(db, id_comentario)
-    if not db_comentario:
-        return None
-    for field, value in comentario.dict(exclude_unset=True).items():
-        setattr(db_comentario, field, value)
+def actualizar_comentario(db: Session, comentario_id: int, user_id: int, data: ComentarioUpdate):
+    comentario = obtener_comentario(db, comentario_id)
+    if comentario.id_usuario != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado para modificar este comentario")
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(comentario, field, value)
     db.commit()
-    db.refresh(db_comentario)
-    return db_comentario
+    db.refresh(comentario)
+    return comentario
 
-def eliminar_comentario(db: Session, id_comentario: int):
-    db_comentario = obtener_comentario_por_id(db, id_comentario)
-    if not db_comentario:
-        return None
-    db.delete(db_comentario)
+def eliminar_comentario(db: Session, comentario_id: int, user_id: int):
+    comentario = obtener_comentario(db, comentario_id)
+    if comentario.id_usuario != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado para eliminar este comentario")
+    db.delete(comentario)
     db.commit()
-    return db_comentario
+    return {"message": "Comentario eliminado"}
