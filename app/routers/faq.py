@@ -1,48 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
 from app.schemas.faq import FaqCreate, FaqUpdate, FaqResponse
-from app.services.faq_service import (
-    crear_faq, obtener_faqs, obtener_faq, actualizar_faq, eliminar_faq
-)
+from app.services import faq_service as service
+from app.utils.security import get_current_user
 
-router = APIRouter(prefix="/faqs", tags=["FAQs"])
+router = APIRouter(prefix="/faq", tags=["FAQ"])
 
-@router.post("/", response_model=dict)
-def create_faq(faq: FaqCreate, db: Session = Depends(get_db)):
-    nueva_faq = crear_faq(db, faq)
-    return {
-        "message": "FAQ creada exitosamente",
-        "data": FaqResponse.model_validate(nueva_faq, from_attributes=True)   # 👈 CORREGIDO
-    }
+@router.post("/", response_model=FaqResponse, status_code=status.HTTP_201_CREATED)
+def crear_faq(data: FaqCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # Solo usuarios autenticados pueden crear FAQs (puedes reforzar con rol si lo deseas)
+    return service.crear_faq(db, data)
 
-@router.get("/", response_model=dict)
-def read_faqs(db: Session = Depends(get_db)):
-    faqs = obtener_faqs(db)
-    return {
-        "data": [FaqResponse.model_validate(f, from_attributes=True) for f in faqs]   # 👈 CORREGIDO
-    }
+@router.get("/", response_model=List[FaqResponse])
+def listar_faqs(db: Session = Depends(get_db)):
+    # Se pueden listar sin autenticación si quieres que sean públicas
+    return service.listar_faqs(db)
 
-@router.get("/{id_faq}", response_model=dict)
-def read_faq(id_faq: int, db: Session = Depends(get_db)):
-    faq = obtener_faq(db, id_faq)
-    if not faq:
-        raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    return {"data": FaqResponse.model_validate(faq, from_attributes=True)}   # 👈 CORREGIDO
+@router.get("/{faq_id}", response_model=FaqResponse)
+def obtener_faq(faq_id: int, db: Session = Depends(get_db)):
+    return service.obtener_faq(db, faq_id)
 
-@router.put("/{id_faq}", response_model=dict)
-def update_faq(id_faq: int, faq_data: FaqUpdate, db: Session = Depends(get_db)):
-    faq_actualizada = actualizar_faq(db, id_faq, faq_data)
-    if not faq_actualizada:
-        raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    return {
-        "message": "FAQ actualizada correctamente",
-        "data": FaqResponse.model_validate(faq_actualizada, from_attributes=True)   # 👈 CORREGIDO
-    }
+@router.put("/{faq_id}", response_model=FaqResponse)
+def actualizar_faq(faq_id: int, data: FaqUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.actualizar_faq(db, faq_id, data)
 
-@router.delete("/{id_faq}", response_model=dict)
-def delete_faq(id_faq: int, db: Session = Depends(get_db)):
-    faq_eliminada = eliminar_faq(db, id_faq)
-    if not faq_eliminada:
-        raise HTTPException(status_code=404, detail="FAQ no encontrada")
-    return {"message": "FAQ eliminada correctamente"}
+@router.delete("/{faq_id}")
+def eliminar_faq(faq_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    return service.eliminar_faq(db, faq_id)

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class FaqBase(BaseModel):
     pregunta: str
@@ -8,14 +9,12 @@ class FaqCreate(FaqBase):
     pass
 
 class FaqUpdate(BaseModel):
-    pregunta: str | None = None
-    respuesta: str | None = None
-    
+    pregunta: Optional[str] = None
+    respuesta: Optional[str] = None
+
 class FaqResponse(FaqBase):
     id_faq: int
 
     class Config:
         orm_mode = True
-    
-    class Config:
         from_attributes = True

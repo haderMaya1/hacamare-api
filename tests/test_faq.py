@@ -1,46 +1,43 @@
-import pytest
+def test_crud_faq(client):
+    # Registrar usuario para autenticación
+    client.post("/auth/register", json={
+        "nombre_usuario": "adminfaq",
+        "contraseña": "123456",
+        "nombres": "Admin",
+        "apellidos": "Faq",
+        "edad": 30,
+        "email": "adminfaq@example.com",
+        "id_rol": 1
+    })
 
-def test_create_faq(client):
-    faq_data = {"pregunta": "¿Cómo registrarse?", "respuesta": "Haz clic en el botón de registro."}
-    response = client.post("/faqs/", json=faq_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "FAQ creada exitosamente"
-    assert data["data"]["pregunta"] == "¿Cómo registrarse?"
+    login = client.post("/auth/login", data={"username": "adminfaq", "password": "123456"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-def test_get_faqs(client):
-    response = client.get("/faqs/")
-    assert response.status_code == 200
-    data = response.json()
-    assert "data" in data
-    assert isinstance(data["data"], list)
+    # Crear FAQ
+    r = client.post("/faq/", json={
+        "pregunta": "¿Cómo crear una cuenta?",
+        "respuesta": "Debes registrarte en la página de inicio."
+    }, headers=headers)
+    assert r.status_code == 201
+    faq_id = r.json()["id_faq"]
 
-def test_get_faq(client):
-    faq_data = {"pregunta": "¿Cómo iniciar sesión?", "respuesta": "Ingresa tus credenciales."}
-    create = client.post("/faqs/", json=faq_data)
-    faq_id = create.json()["data"]["id_faq"]
+    # Listar FAQs
+    r = client.get("/faq/")
+    assert r.status_code == 200
+    assert any(f["id_faq"] == faq_id for f in r.json())
 
-    response = client.get(f"/faqs/{faq_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["pregunta"] == "¿Cómo iniciar sesión?"
+    # Obtener una FAQ
+    r = client.get(f"/faq/{faq_id}")
+    assert r.status_code == 200
+    assert r.json()["pregunta"] == "¿Cómo crear una cuenta?"
 
-def test_update_faq(client):
-    faq_data = {"pregunta": "¿Cómo actualizar perfil?", "respuesta": "En la sección de configuración."}
-    create = client.post("/faqs/", json=faq_data)
-    faq_id = create.json()["data"]["id_faq"]
+    # Actualizar FAQ
+    r = client.put(f"/faq/{faq_id}", json={"respuesta": "Solo haz clic en Registrarse."}, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["respuesta"] == "Solo haz clic en Registrarse."
 
-    response = client.put(f"/faqs/{faq_id}", json={"respuesta": "Desde la configuración de usuario."})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["data"]["respuesta"] == "Desde la configuración de usuario."
-
-def test_delete_faq(client):
-    faq_data = {"pregunta": "¿Cómo eliminar cuenta?", "respuesta": "Contacta soporte."}
-    create = client.post("/faqs/", json=faq_data)
-    faq_id = create.json()["data"]["id_faq"]
-
-    response = client.delete(f"/faqs/{faq_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["message"] == "FAQ eliminada correctamente"
+    # Eliminar FAQ
+    r = client.delete(f"/faq/{faq_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["message"] == "FAQ eliminada correctamente"
