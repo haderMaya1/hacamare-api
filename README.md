@@ -9,3 +9,7 @@
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+## Iniciar la app
+```bash cmd
+uvicorn app.main:app --reload"
