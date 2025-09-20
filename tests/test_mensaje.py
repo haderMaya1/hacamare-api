@@ -1,129 +1,43 @@
-import uuid
-
-def test_create_mensaje(client):
-    # Crear usuario
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "msguser" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
+def test_crud_mensaje(client):
+    # Registrar usuario
+    client.post("/auth/register", json={
+        "nombre_usuario": "msguser",
+        "contraseña": "123456",
         "nombres": "Msg",
         "apellidos": "User",
-        "edad": 22,
-        "email": f"msg_{uuid.uuid4().hex[:6]}@test.com",
+        "edad": 25,
+        "email": "msguser@example.com",
         "id_rol": 1
     })
-    usuario_id = usuario.json()["data"]["id_usuario"]
+    login = client.post("/auth/login", data={"username": "msguser", "password": "123456"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-    # Crear sesión
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Chat Test",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
+    # Crear sesión de chat
+    sesion = client.post("/sesiones/", json={"nombre_tema": "Chat Mensajes", "tipo": "público"}, headers=headers)
+    sesion_id = sesion.json()["id_sesion"]
 
     # Crear mensaje
-    resp = client.post("/mensajes/", json={
-        "contenido": "Hola mundo",
-        "id_remitente": usuario_id,
-        "id_sesion": sesion_id
-    })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["message"] == "Mensaje enviado exitosamente"
-    assert data["data"]["contenido"] == "Hola mundo"
-    assert data["data"]["id_remitente"] == usuario_id
+    response = client.post("/mensajes/", json={"contenido": "Hola mundo", "id_sesion": sesion_id}, headers=headers)
+    assert response.status_code == 201
+    mensaje_id = response.json()["id_mensaje"]
 
-def test_get_mensajes(client):
-    resp = client.get("/mensajes/")
-    assert resp.status_code == 200
-    assert "data" in resp.json()
+    # Obtener mensaje
+    response = client.get(f"/mensajes/{mensaje_id}", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["contenido"] == "Hola mundo"
 
-def test_get_mensaje(client):
-    # Crear usuario + sesión + mensaje
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "getmsg" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Get",
-        "apellidos": "Msg",
-        "edad": 23,
-        "email": f"getmsg_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
+    # Listar mensajes de la sesión
+    response = client.get(f"/mensajes/sesion/{sesion_id}", headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
 
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Chat Get",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
+    # Actualizar mensaje
+    response = client.put(f"/mensajes/{mensaje_id}", json={"contenido": "Mensaje editado"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["contenido"] == "Mensaje editado"
 
-    mensaje = client.post("/mensajes/", json={
-        "contenido": "Mensaje único",
-        "id_remitente": usuario_id,
-        "id_sesion": sesion_id
-    })
-    mensaje_id = mensaje.json()["data"]["id_mensaje"]
-
-    resp = client.get(f"/mensajes/{mensaje_id}")
-    assert resp.status_code == 200
-    assert resp.json()["data"]["id_mensaje"] == mensaje_id
-
-def test_update_mensaje(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "upmsg" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Up",
-        "apellidos": "Msg",
-        "edad": 24,
-        "email": f"upmsg_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Chat Update",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
-
-    mensaje = client.post("/mensajes/", json={
-        "contenido": "Texto viejo",
-        "id_remitente": usuario_id,
-        "id_sesion": sesion_id
-    })
-    mensaje_id = mensaje.json()["data"]["id_mensaje"]
-
-    resp = client.put(f"/mensajes/{mensaje_id}", json={"contenido": "Texto nuevo"})
-    assert resp.status_code == 200
-    assert resp.json()["data"]["contenido"] == "Texto nuevo"
-
-def test_delete_mensaje(client):
-    usuario = client.post("/usuarios/", json={
-        "nombre_usuario": "delmsg" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "Del",
-        "apellidos": "Msg",
-        "edad": 25,
-        "email": f"delmsg_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    })
-    usuario_id = usuario.json()["data"]["id_usuario"]
-
-    sesion = client.post("/sesiones_chat/", json={
-        "nombre_tema": "Chat Delete",
-        "anfitrion_id": usuario_id
-    })
-    sesion_id = sesion.json()["data"]["id_sesion"]
-
-    mensaje = client.post("/mensajes/", json={
-        "contenido": "Borrar este mensaje",
-        "id_remitente": usuario_id,
-        "id_sesion": sesion_id
-    })
-    mensaje_id = mensaje.json()["data"]["id_mensaje"]
-
-    resp = client.delete(f"/mensajes/{mensaje_id}")
-    assert resp.status_code == 200
-    assert resp.json()["message"] == "Mensaje eliminado correctamente"
-
-    resp_not_found = client.delete(f"/mensajes/{mensaje_id}")
-    assert resp_not_found.status_code == 404
+    # Eliminar mensaje
+    response = client.delete(f"/mensajes/{mensaje_id}", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["message"] == "Mensaje eliminado"

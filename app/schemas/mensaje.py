@@ -5,11 +5,9 @@ from typing import Optional
 class MensajeBase(BaseModel):
     contenido: str
     imagen: Optional[str] = None
-    id_remitente: int
-    id_sesion: int
 
 class MensajeCreate(MensajeBase):
-    pass
+    id_sesion: int
 
 class MensajeUpdate(BaseModel):
     contenido: Optional[str] = None
@@ -18,7 +16,9 @@ class MensajeUpdate(BaseModel):
 class MensajeResponse(MensajeBase):
     id_mensaje: int
     fecha_envio: datetime
-
+    id_remitente: int
+    id_sesion: int
+    
     class Config:
         orm_mode = True
 

@@ -1,65 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.mensaje import MensajeCreate, MensajeUpdate, MensajeResponse
-from app.services.mensaje_service import (
-    crear_mensaje,
-    obtener_mensajes,
-    obtener_mensaje_por_id,
-    obtener_mensajes_por_sesion,
-    actualizar_mensaje,
-    eliminar_mensaje
-)
+from app.services import mensaje_service
+from app.utils.security import get_current_user
+from typing import List
 
 router = APIRouter(prefix="/mensajes", tags=["Mensajes"])
 
-@router.post("/", response_model=dict)
-def create_mensaje(mensaje: MensajeCreate, db: Session = Depends(get_db)):
-    nuevo = crear_mensaje(db, mensaje)
-    return {
-        "message": "Mensaje enviado exitosamente",
-        "data": MensajeResponse.model_validate(nuevo, from_attributes=True)
-    }
+@router.post("/", response_model=MensajeResponse, status_code=status.HTTP_201_CREATED)
+def crear_mensaje(mensaje: MensajeCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return mensaje_service.crear_mensaje(db, mensaje, current_user)
 
-@router.get("/", response_model=dict)
-def get_mensajes(db: Session = Depends(get_db)):
-    mensajes = obtener_mensajes(db)
-    return {
-        "message": "Lista de mensajes",
-        "data": [MensajeResponse.model_validate(m, from_attributes=True) for m in mensajes]
-    }
+@router.get("/{id_mensaje}", response_model=MensajeResponse, status_code=status.HTTP_200_OK)
+def obtener_mensaje(id_mensaje: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return mensaje_service.obtener_mensaje(db, id_mensaje, current_user)
 
-@router.get("/{id_mensaje}", response_model=dict)
-def get_mensaje(id_mensaje: int, db: Session = Depends(get_db)):
-    mensaje = obtener_mensaje_por_id(db, id_mensaje)
-    if not mensaje:
-        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
-    return {
-        "message": "Mensaje encontrado",
-        "data": MensajeResponse.model_validate(mensaje, from_attributes=True)
-    }
+@router.get("/sesion/{id_sesion}", response_model=List[MensajeResponse], status_code=status.HTTP_200_OK)
+def listar_mensajes(id_sesion: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return mensaje_service.listar_mensajes(db, id_sesion, current_user)
 
-@router.get("/sesion/{id_sesion}", response_model=dict)
-def get_mensajes_sesion(id_sesion: int, db: Session = Depends(get_db)):
-    mensajes = obtener_mensajes_por_sesion(db, id_sesion)
-    return {
-        "message": "Lista de mensajes de la sesión",
-        "data": [MensajeResponse.model_validate(m, from_attributes=True) for m in mensajes]
-    }
+@router.put("/{id_mensaje}", response_model=MensajeResponse, status_code=status.HTTP_200_OK)
+def actualizar_mensaje(id_mensaje: int, mensaje_update: MensajeUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return mensaje_service.actualizar_mensaje(db, id_mensaje, mensaje_update, current_user)
 
-@router.put("/{id_mensaje}", response_model=dict)
-def update_mensaje(id_mensaje: int, mensaje: MensajeUpdate, db: Session = Depends(get_db)):
-    actualizado = actualizar_mensaje(db, id_mensaje, mensaje)
-    if not actualizado:
-        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
-    return {
-        "message": "Mensaje actualizado correctamente",
-        "data": MensajeResponse.model_validate(actualizado, from_attributes=True)
-    }
-
-@router.delete("/{id_mensaje}", response_model=dict)
-def delete_mensaje(id_mensaje: int, db: Session = Depends(get_db)):
-    eliminado = eliminar_mensaje(db, id_mensaje)
-    if not eliminado:
-        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
-    return {"message": "Mensaje eliminado correctamente"}
+@router.delete("/{id_mensaje}", status_code=status.HTTP_200_OK)
+def eliminar_mensaje(id_mensaje: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return mensaje_service.eliminar_mensaje(db, id_mensaje, current_user)
