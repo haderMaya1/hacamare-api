@@ -1,117 +1,43 @@
-import uuid
-
-def test_create_contacto(client):
-    # Crear dos usuarios
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "cuser1_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User1",
-        "apellidos": "Test",
-        "edad": 20,
-        "email": f"cuser1_{uuid.uuid4().hex[:6]}@test.com",
+def test_crud_contacto(client):
+    # Registrar usuarios
+    client.post("/auth/register", json={
+        "nombre_usuario": "alice",
+        "contraseña": "123456",
+        "nombres": "Alice",
+        "apellidos": "Smith",
+        "edad": 28,
+        "email": "alice@example.com",
         "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "cuser2_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User2",
-        "apellidos": "Test",
-        "edad": 21,
-        "email": f"cuser2_{uuid.uuid4().hex[:6]}@test.com",
+    })
+    client.post("/auth/register", json={
+        "nombre_usuario": "bob",
+        "contraseña": "123456",
+        "nombres": "Bob",
+        "apellidos": "Johnson",
+        "edad": 29,
+        "email": "bob@example.com",
         "id_rol": 1
-    }).json()["data"]["id_usuario"]
+    })
 
-    resp = client.post("/contactos/", json={"usuario_id_1": u1, "usuario_id_2": u2})
-    assert resp.status_code == 200
-    assert resp.json()["data"]["usuario_id_1"] == u1
-    assert resp.json()["data"]["usuario_id_2"] == u2
+    # Login Alice
+    login = client.post("/auth/login", data={"username": "alice", "password": "123456"})
+    token = login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-def test_get_contactos(client):
-    resp = client.get("/contactos/")
-    assert resp.status_code == 200
-    assert "data" in resp.json()
+    # Crear contacto Alice → Bob
+    r = client.post("/contactos/", json={"usuario_id_2": 2}, headers=headers)
+    assert r.status_code == 201
+    contacto_id = r.json()["id_contacto"]
+    assert r.json()["usuario_id_1"] == 1
+    assert r.json()["usuario_id_2"] == 2
 
-def test_get_contacto(client):
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "cget1_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User1",
-        "apellidos": "Get",
-        "edad": 22,
-        "email": f"cget1_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
+    # Listar contactos de Alice
+    r = client.get("/contactos/", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert any(c["id_contacto"] == contacto_id for c in data)
 
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "cget2_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User2",
-        "apellidos": "Get",
-        "edad": 23,
-        "email": f"cget2_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    contacto = client.post("/contactos/", json={"usuario_id_1": u1, "usuario_id_2": u2}).json()["data"]
-
-    resp = client.get(f"/contactos/{contacto['id_contacto']}")
-    assert resp.status_code == 200
-    assert resp.json()["data"]["id_contacto"] == contacto["id_contacto"]
-
-def test_get_contactos_usuario(client):
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "cusu1_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User1",
-        "apellidos": "U",
-        "edad": 24,
-        "email": f"cusu1_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "cusu2_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User2",
-        "apellidos": "U",
-        "edad": 25,
-        "email": f"cusu2_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    client.post("/contactos/", json={"usuario_id_1": u1, "usuario_id_2": u2})
-
-    resp = client.get(f"/contactos/usuario/{u1}")
-    assert resp.status_code == 200
-    assert any(c["usuario_id_1"] == u1 or c["usuario_id_2"] == u1 for c in resp.json()["data"])
-
-def test_delete_contacto(client):
-    u1 = client.post("/usuarios/", json={
-        "nombre_usuario": "cdel1_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User1",
-        "apellidos": "Del",
-        "edad": 26,
-        "email": f"cdel1_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    u2 = client.post("/usuarios/", json={
-        "nombre_usuario": "cdel2_" + uuid.uuid4().hex[:4],
-        "contraseña": "1234",
-        "nombres": "User2",
-        "apellidos": "Del",
-        "edad": 27,
-        "email": f"cdel2_{uuid.uuid4().hex[:6]}@test.com",
-        "id_rol": 1
-    }).json()["data"]["id_usuario"]
-
-    contacto = client.post("/contactos/", json={"usuario_id_1": u1, "usuario_id_2": u2}).json()["data"]["id_contacto"]
-
-    resp = client.delete(f"/contactos/{contacto}")
-    assert resp.status_code == 200
-    assert resp.json()["message"] == "Contacto eliminado correctamente"
-
-    resp_not_found = client.delete(f"/contactos/{contacto}")
-    assert resp_not_found.status_code == 404
+    # Eliminar contacto
+    r = client.delete(f"/contactos/{contacto_id}", headers=headers)
+    assert r.status_code == 200
+    assert r.json()["message"] == "Contacto eliminado"
