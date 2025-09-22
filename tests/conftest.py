@@ -1,4 +1,5 @@
 import pytest
+from app.utils.security import hash_password
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
@@ -9,6 +10,7 @@ from app.models import (usuario,password_reset, token_blacklist, comentario,cont
                         rol,sesion_chat,solicitud_amistad,usuario_interes,usuario_sesion_chat)
 from app.models.rol import Rol
 from app.models.pais import Pais
+from app.models.usuario import Usuario
 import os
 
 # Detectar DB para tests (por defecto SQLite en memoria)
@@ -64,3 +66,32 @@ def client(db_session):
         yield db_session  # no cerramos aquí, rollback lo maneja db_session
     app.dependency_overrides[get_db] = override_get_db
     return TestClient(app)
+
+@pytest.fixture
+def admin_token(client, db_session):
+    """
+    Crea un usuario admin y devuelve un token válido para las pruebas
+    """
+    admin = db_session.query(Usuario).filter_by(nombre_usuario="admin").first()
+    if not admin:
+        admin = Usuario(
+            nombre_usuario="admin",
+            contraseña=hash_password("admin123"),
+            nombres="Admin",
+            apellidos="Principal",
+            edad=30,
+            email="admin@example.com",
+            id_pais=1,          # usa un país válido de test
+            estado_cuenta="activo",
+            email_verificado=True,
+            id_rol=1            # rol admin
+        )
+        db_session.add(admin)
+        db_session.commit()
+
+    # login
+    login_data = {"username": "admin", "password": "admin123"}
+    r = client.post("/auth/login", data=login_data)
+    assert r.status_code == 200, r.text
+    return r.json()["access_token"]
+   

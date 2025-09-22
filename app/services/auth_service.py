@@ -180,6 +180,7 @@ def login_user(db: Session, nombre_usuario: str, contraseña: str) -> dict:
         "token_type": "bearer",
         "user_id": usuario.id_usuario,
         "username": usuario.nombre_usuario,
+        "password": usuario.contraseña,
         "rol": usuario.id_rol
     }
 

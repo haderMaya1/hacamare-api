@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.usuario import Usuario
 from app.models.interes import Interes
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from app.utils.security import hash_password
 from app.utils.helpers import not_found_exception
 

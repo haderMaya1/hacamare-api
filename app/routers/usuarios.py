@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.services import usuario_service
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate, UsuarioResponse
-from app.utils.security import get_current_user
+from app.utils.security import get_current_user, require_role
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
@@ -31,6 +31,11 @@ def actualizar_usuario(usuario_id: int, usuario_data: UsuarioUpdate, db: Session
 
 @router.delete("/{usuario_id}")
 def eliminar_usuario(usuario_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.id_usuario != usuario_id and current_user.id_rol !=1:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar este usuario"
+        )
     return usuario_service.delete_usuario(db, usuario_id)
 
 
