@@ -1,7 +1,7 @@
 from datetime import datetime
 from passlib.context import CryptContext
-from sqlalchemy import insert
-from app.database import SessionLocal
+from sqlalchemy import insert, text
+from app.database import SessionLocal, engine
 from app.models.rol import Rol
 from app.models.usuario import Usuario
 from app.models.interes import Interes
@@ -16,14 +16,40 @@ from app.models.solicitud_amistad import SolicitudAmistad
 from app.models.contacto import Contacto
 from app.models.faq import Faq
 from app.models.notificacion import Notificacion
+from app.models.pais import Pais
 import os
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def ensure_usuario_columns():
+    """
+    Comprueba si las columnas nuevas existen en la tabla 'usuario'
+    y las crea en caso de faltar (solo para SQLite).
+    """
+    with engine.connect() as conn:
+        existing = [row[1] for row in conn.execute(text("PRAGMA table_info(usuario);"))]
+        # Columnas que el modelo define pero podrían faltar en una DB antigua
+        needed = {
+            "foto_perfil": "TEXT",
+            "estado_cuenta": "TEXT DEFAULT 'activo'",
+            "email_verificado": "BOOLEAN DEFAULT 0",
+            "token_verificacion": "TEXT",
+            "token_recuperacion": "TEXT",
+            "expiracion_token": "DATETIME"
+        }
+        for col, coltype in needed.items():
+            if col not in existing:
+                print(f"⚠️  Agregando columna faltante: {col}")
+                conn.execute(text(f"ALTER TABLE usuario ADD COLUMN {col} {coltype};"))
+
+
 def create_seed_data():
     db = SessionLocal()
     try:
+        # 🔹 Asegura columnas antes de hacer SELECT o INSERT
+        ensure_usuario_columns()
+
         # ----------- Roles -----------
         if not db.query(Rol).first():
             admin_rol = Rol(nombre="Administrador", permisos='{"all":true}')
@@ -34,6 +60,15 @@ def create_seed_data():
         else:
             admin_rol, user_rol = db.query(Rol).all()[:2]
 
+        # ---------- Paises -----------
+        if not db.query(Pais).first():
+            pais1 = Pais(pais="Colombia", estado="Antioquia", ciudad="Medellin")
+            pais2 = Pais(pais="Mexico", estado="Estado de Mexico", ciudad="Ciudad de Mexico")
+            db.add_all([pais1, pais2])
+            db.commit()
+        else:
+            pais1, pais2 = db.query(Pais).all()[:2]
+
         # ----------- Usuarios -----------
         if not db.query(Usuario).first():
             admin = Usuario(
@@ -43,6 +78,7 @@ def create_seed_data():
                 apellidos="Principal",
                 edad=30,
                 email="admin@example.com",
+                id_pais=pais1.id_pais,
                 estado_cuenta="activo",
                 email_verificado=1,
                 id_rol=admin_rol.id_rol
@@ -54,6 +90,7 @@ def create_seed_data():
                 apellidos="Pérez",
                 edad=25,
                 email="juan@example.com",
+                id_pais=pais1.id_pais,
                 estado_cuenta="activo",
                 email_verificado=1,
                 id_rol=user_rol.id_rol
@@ -65,6 +102,7 @@ def create_seed_data():
                 apellidos="García",
                 edad=22,
                 email="maria@example.com",
+                id_pais=pais2.id_pais,
                 estado_cuenta="activo",
                 email_verificado=1,
                 id_rol=user_rol.id_rol
@@ -182,7 +220,7 @@ def create_seed_data():
             ))
             db.commit()
 
-        print("Datos iniciales creados correctamente.")
+        print("✅ Datos iniciales creados correctamente.")
     finally:
         db.close()
 

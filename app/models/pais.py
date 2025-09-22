@@ -10,4 +10,4 @@ class Pais(Base):
     estado = Column(String(50), nullable=False)
     ciudad = Column(String(50), nullable=False)
 
-    usuario = relationship("Usuario", back_populates="pais")
+    usuarios = relationship("Usuario", back_populates="pais")

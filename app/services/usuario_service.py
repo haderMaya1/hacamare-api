@@ -27,9 +27,7 @@ def create_usuario(db: Session, usuario: UsuarioCreate) -> Usuario:
         edad=usuario.edad,
         email=usuario.email,
         telefono=usuario.telefono,
-        pais=usuario.pais,
-        estado=usuario.estado,
-        ciudad=usuario.ciudad,
+        id_pais=usuario.id_pais,
         foto_perfil=usuario.foto_perfil,
         id_rol=usuario.id_rol,
     )

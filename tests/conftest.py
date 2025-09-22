@@ -5,6 +5,7 @@ from app.database import Base, get_db
 from fastapi.testclient import TestClient
 from app.main import app
 from app.models.rol import Rol
+from app.models.pais import Pais
 from app.models.solicitud_amistad import SolicitudAmistad
 import os
 
@@ -28,7 +29,12 @@ def setup_database():
     session = TestingSessionLocal()
     if not session.query(Rol).filter_by(id_rol=1).first():
         session.add(Rol(id_rol=1, nombre="Default", permisos="{}"))
-        session.commit()
+        
+    if not session.query(Pais).filter_by(id_pais=1).first():
+        session.add(Pais(id_pais=1, pais="Colombia",
+                         estado="Antioquia", ciudad="Medellín"))
+            
+    session.commit()
     session.close()
 
     yield

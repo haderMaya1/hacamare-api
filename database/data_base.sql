@@ -23,6 +23,7 @@ CREATE TABLE usuario (
     email TEXT UNIQUE NOT NULL,
     telefono TEXT,
     id_pais INTEGER,
+    foto_perfil TEXT,
     fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
     estado_cuenta TEXT CHECK (estado_cuenta IN ('activo', 'inactivo', 'bloqueado')),
     email_verificado INTEGER DEFAULT 0,

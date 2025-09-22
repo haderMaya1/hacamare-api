@@ -1,31 +1,34 @@
 import pytest
+from app.main import app
 
-def test_register_and_login_and_me(client):
+def test_register_and_login(client, db_session):
     # Registro
-    response = client.post("/auth/register", json={
+    payload = {
         "nombre_usuario": "testuser",
-        "contraseña": "123456",
+        "contraseña": "Secret123",
         "nombres": "Test",
         "apellidos": "User",
-        "edad": 25,
+        "edad": 20,
         "email": "test@example.com",
         "id_rol": 1
-    })
-    assert response.status_code == 201
-    data = response.json()
-    assert data["nombre_usuario"] == "testuser"
+    }
+    r = client.post("/auth/register", json=payload)
+    assert r.status_code == 201
+    data = r.json()
+    assert data["nombre_usuario"] == payload["nombre_usuario"]
 
     # Login
-    response = client.post("/auth/login", data={
-        "username": "testuser",
-        "password": "123456"
-    })
-    assert response.status_code == 200
-    token = response.json()["access_token"]
+    login_data = {
+        "username": payload["nombre_usuario"],
+        "password": payload["contraseña"]
+    }
+    r = client.post("/auth/login", data=login_data)
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    assert token
 
-    # Me
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["nombre_usuario"] == "testuser"
-    assert data["email"] == "test@example.com"
+    # Obtener datos del usuario autenticado
+    r = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    me = r.json()
+    assert me["email"] == payload["email"]

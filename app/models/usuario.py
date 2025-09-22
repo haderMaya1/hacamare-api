@@ -15,6 +15,7 @@ class Usuario(Base):
     edad = Column(Integer, nullable=False)
     email = Column(String(150), unique=True, nullable=False)
     telefono = Column(String(20))
+    id_pais = Column(Integer, ForeignKey("pais.id_pais"))
     foto_perfil = Column(String)  # URL o base64
     fecha_registro = Column(DateTime, server_default=func.now())
     estado_cuenta = Column(String(20), default="activo")
@@ -36,4 +37,4 @@ class Usuario(Base):
     solicitudes_recibidas = relationship("SolicitudAmistad", foreign_keys="SolicitudAmistad.destinatario_id", back_populates="destinatario", cascade="all, delete-orphan")
     contactos1 = relationship("Contacto", foreign_keys="Contacto.usuario_id_1", back_populates="usuario1", cascade="all, delete-orphan")
     contactos2 = relationship("Contacto", foreign_keys="Contacto.usuario_id_2", back_populates="usuario2", cascade="all, delete-orphan")
-    pais = relationship("Pais", back_populates="usuario", cascade="all, delete-orphan")
+    pais = relationship("Pais", back_populates="usuarios")

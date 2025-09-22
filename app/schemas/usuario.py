@@ -13,7 +13,7 @@ class UsuarioBase(BaseModel):
     telefono: Optional[str] = None
     id_pais: Optional[int] = None
     foto_perfil: Optional[str] = None
-    id_rol: int
+    id_rol: Optional[int] = None
 
 
 class UsuarioCreate(UsuarioBase):
