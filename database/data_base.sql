@@ -35,6 +35,16 @@ CREATE TABLE usuario (
     FOREIGN KEY (id_pais) REFERENCES pais (id_pais) ON DELETE SET NULL
 );
 
+
+-- ResetPassword Table
+CREATE TABLE password_reset(
+    id_password_reset INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT,
+    expires_at DATETIME,
+    user_id INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES usuario (id_usuario)
+);
+
 -- Tabla interes
 CREATE TABLE interes (
     id_interes INTEGER PRIMARY KEY AUTOINCREMENT,

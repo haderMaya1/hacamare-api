@@ -10,6 +10,8 @@ PERMISSIONS = {
     # Usuario normal: lista mínima de permisos
     "usuario": {
         "auth:login": True,
+        "usuarios:listar": True,
+        "usuarios:crear": False,
         "usuarios:read_self": True,
         "usuarios:update_self": True,
         "usuarios:change_password": True,

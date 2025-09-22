@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 from app.models.usuario_interes import UsuarioInteres
 from app.models.usuario_sesion_chat import UsuarioSesionChat
+from app.models.password_reset import PasswordReset
 
 class Usuario(Base):
     __tablename__ = "usuario"
@@ -38,3 +39,4 @@ class Usuario(Base):
     contactos1 = relationship("Contacto", foreign_keys="Contacto.usuario_id_1", back_populates="usuario1", cascade="all, delete-orphan")
     contactos2 = relationship("Contacto", foreign_keys="Contacto.usuario_id_2", back_populates="usuario2", cascade="all, delete-orphan")
     pais = relationship("Pais", back_populates="usuarios")
+    password_resets = relationship("PasswordReset", back_populates="usuarios")

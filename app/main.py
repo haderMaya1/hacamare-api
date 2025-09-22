@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.config import settings
 from app.routers import (rol, usuarios, interes, publicaciones,
                         sesion_chat, usuario_sesion_chat,
-                        mensaje, reaccion_publicacion, comentarios, 
+                        mensaje, reaccion_publicacion, comentarios, pais, password_reset,
                         solicitud_amistad, contactos, faq, notificaciones, auth)
 
 # Inicialización de la app FastAPI
@@ -27,6 +27,8 @@ app.include_router(contactos.router)
 app.include_router(faq.router)
 app.include_router(notificaciones.router)
 app.include_router(auth.router)
+app.include_router(pais.router)
+app.include_router(password_reset.router)
 
 # Ruta de healthcheck
 @app.get("/", tags=["Health"])

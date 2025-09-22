@@ -9,7 +9,9 @@ from app.utils.helpers import get_user_by_id
 from app.config import settings
 from app.utils.permissions import PERMISSIONS
 from app.models.usuario import Usuario
+from app.models.rol import Rol
 from typing import Optional, Callable
+import json
 import os
 
 # ==========================
@@ -76,6 +78,31 @@ def require_permission(permission: str) -> Callable:
             )
         return current_user
     return dependency
+
+def require_role(required: list[str]):
+    """
+    required: lista de permisos o nombres de rol permitidos.
+    Ej: ["admin"]  o  ["usuarios:listar"]
+    """
+    def wrapper(
+        current_user = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ):
+        rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
+        if not rol:
+            raise HTTPException(status_code=403, detail="Rol no encontrado")
+
+        # Si required es un nombre de rol
+        if any(req.lower() == rol.nombre.lower() for req in required):
+            return current_user
+
+        # Si es permiso, revisa el JSON de permisos
+        permisos = json.loads(rol.permisos or "{}")
+        if any(permisos.get(req, False) for req in required):
+            return current_user
+
+        raise HTTPException(status_code=403, detail="Permiso denegado")
+    return wrapper
 
 # ==========================
 # DEPENDENCIAS DE USUARIO
