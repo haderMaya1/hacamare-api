@@ -4,12 +4,13 @@
 - Python 3.10+ (recomendado)
 - pip
 
-## Instalar dependencias
+## Iniciar la app
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate   
+# Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-## Iniciar la app
+## Instalar dependencias
 ```bash cmd
-uvicorn app.main:app --reload"
+uvicorn app.main:app --reload

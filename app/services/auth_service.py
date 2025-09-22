@@ -22,7 +22,7 @@ def register_user(db: Session, usuario: UsuarioCreate) -> Usuario:
         apellidos=usuario.apellidos,
         edad=usuario.edad,
         email=usuario.email,
-        id_rol=usuario.id_rol,
+        id_rol=usuario.id_rol
     )
     db.add(nuevo_usuario)
     db.commit()

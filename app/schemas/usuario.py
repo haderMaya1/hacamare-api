@@ -11,9 +11,7 @@ class UsuarioBase(BaseModel):
     edad: int
     email: EmailStr
     telefono: Optional[str] = None
-    pais: Optional[str] = None
-    estado: Optional[str] = None
-    ciudad: Optional[str] = None
+    id_pais: Optional[int] = None
     foto_perfil: Optional[str] = None
     id_rol: int
 
@@ -27,9 +25,7 @@ class UsuarioUpdate(BaseModel):
     apellidos: Optional[str] = None
     edad: Optional[int] = None
     telefono: Optional[str] = None
-    pais: Optional[str] = None
-    estado: Optional[str] = None
-    ciudad: Optional[str] = None
+    id_pais: Optional[int] = None
     foto_perfil: Optional[str] = None
     estado_cuenta: Optional[str] = None
 

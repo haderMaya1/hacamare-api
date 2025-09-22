@@ -5,6 +5,13 @@ CREATE TABLE rol (
     permisos TEXT DEFAULT '{}'
 );
 
+CREATE TABLE pais (
+    id_pais INTEGER PRIMARY KEY AUTOINCREMENT,
+    pais TEXT NOT NULL,
+    estado TEXT NOT NULL,
+    ciudad TEXT NOT NULL
+);
+
 -- Tabla usuario
 CREATE TABLE usuario (
     id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,18 +22,16 @@ CREATE TABLE usuario (
     edad INTEGER CHECK (edad >= 13),
     email TEXT UNIQUE NOT NULL,
     telefono TEXT,
-    pais TEXT,
-    estado TEXT,
-    ciudad TEXT,
-    foto_perfil TEXT,
+    id_pais INTEGER,
     fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
     estado_cuenta TEXT CHECK (estado_cuenta IN ('activo', 'inactivo', 'bloqueado')),
-    email_verificado INTEGER DEFAULT 0, -- SQLite no tiene BOOLEAN, usamos INTEGER (0=false, 1=true)
+    email_verificado INTEGER DEFAULT 0,
     token_verificacion TEXT,
     token_recuperacion TEXT,
     expiracion_token DATETIME,
     id_rol INTEGER NOT NULL,
-    FOREIGN KEY (id_rol) REFERENCES rol (id_rol)
+    FOREIGN KEY (id_rol) REFERENCES rol (id_rol) ON DELETE RESTRICT,
+    FOREIGN KEY (id_pais) REFERENCES pais (id_pais) ON DELETE SET NULL
 );
 
 -- Tabla interes

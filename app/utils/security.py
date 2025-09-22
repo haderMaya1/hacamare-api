@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.helpers import get_user_by_id
 from app.config import settings
+from app.utils.permissions import PERMISSIONS
+from app.models.usuario import Usuario
+from typing import Optional, Callable
 import os
 
 # ==========================
@@ -44,7 +47,36 @@ def decode_access_token(token: str) -> dict | None:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
         return None
-    
+
+
+# ==========================
+# DEPENDENCIAS DE ROL
+# ==========================
+
+def _role_name_from_user(user: Usuario) -> str:
+    # si tu relación rol está cargada: user.rol.nombre
+    try:
+        return (user.rol.nombre or "").lower()
+    except Exception:
+        # fallback si no hay relación cargada:
+        return {1: "administrador", 2: "usuario"}.get(user.id_rol, "usuario")
+
+def require_permission(permission: str) -> Callable:
+    """
+    Devuelve una dependencia que exige un permiso determinado.
+    Uso: dependencies=[Depends(require_permission("usuarios:read_all"))]
+    """
+    def dependency(current_user: Usuario = Depends(get_current_user)):
+        role = _role_name_from_user(current_user)
+        perms = PERMISSIONS.get(role, {})
+        if not (perms.get("all") or perms.get(permission)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para realizar esta operación"
+            )
+        return current_user
+    return dependency
+
 # ==========================
 # DEPENDENCIAS DE USUARIO
 # ==========================
@@ -71,3 +103,39 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+
+def require_permission(permission: str):
+    """
+    Devuelve una dependencia que valida si el usuario tiene
+    el permiso solicitado.
+    """
+    def dependency(current_user: Usuario = Depends(get_current_user)):
+        role = current_user.rol.nombre.lower()
+        perms = PERMISSIONS.get(role, {})
+        if not (perms.get("all") or perms.get(permission)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permiso para esta operación"
+            )
+        return current_user
+    return dependency
+
+def admin_required(current_user: Usuario = Depends(get_current_user)):
+    role = _role_name_from_user(current_user)
+    if role != "administrador" and not (current_user.id_rol == 1):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores")
+    return current_user
+
+def owner_or_admin(get_resource_owner_id: Callable[[any], int]):
+    """
+    Devuelve una dependencia que valida que current_user sea dueño del recurso
+    o administrador. get_resource_owner_id es una función que recibe (db, resource_id)
+    y devuelve el id del owner. Uso:
+      @router.put("/{id}", dependencies=[Depends(owner_or_admin(lambda db, id: get_pub_owner(db, id)))])
+    """
+    def dependency(resource_id: int, db = Depends(...), current_user: Usuario = Depends(get_current_user)):
+        owner_id = get_resource_owner_id(db, resource_id)
+        if owner_id != current_user.id_usuario and current_user.id_rol != 1:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+        return current_user
+    return dependency

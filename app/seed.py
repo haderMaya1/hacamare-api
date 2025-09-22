@@ -28,7 +28,8 @@ def create_seed_data():
         if not db.query(Rol).first():
             admin_rol = Rol(nombre="Administrador", permisos='{"all":true}')
             user_rol = Rol(nombre="Usuario", permisos='{}')
-            db.add_all([admin_rol, user_rol])
+            anonimo_rol = Rol(nombre="Anónimo", permisos='{}')
+            db.add_all([admin_rol, user_rol, anonimo_rol])
             db.commit()
         else:
             admin_rol, user_rol = db.query(Rol).all()[:2]
