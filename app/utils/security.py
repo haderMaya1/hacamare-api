@@ -10,8 +10,10 @@ from app.config import settings
 from app.utils.permissions import PERMISSIONS
 from app.models.usuario import Usuario
 from app.models.rol import Rol
+from app.models.token_blacklist import RevokedToken
 from typing import Optional, Callable
 import json
+import uuid
 import os
 
 # ==========================
@@ -41,6 +43,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
+    to_encode.update({"jti": str(uuid.uuid4())})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 def decode_access_token(token: str) -> dict | None:
@@ -49,7 +52,16 @@ def decode_access_token(token: str) -> dict | None:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
         return None
-
+    
+# Dependencia que extrae jti del token (útil para logout)
+def get_token_jti(token: str = Depends(oauth2_scheme)):
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+    jti = payload.get("jti")
+    if not jti:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token no contiene jti")
+    return jti
 
 # ==========================
 # DEPENDENCIAS DE ROL
@@ -125,6 +137,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
+    
+    jti = payload.get("jti")
+    if jti:
+        revoked = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+        if revoked:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revocado")
 
     user = get_user_by_id(db, user_id=user_id)
     if user is None:

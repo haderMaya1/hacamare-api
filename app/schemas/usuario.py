@@ -29,7 +29,10 @@ class UsuarioUpdate(BaseModel):
     foto_perfil: Optional[str] = None
     estado_cuenta: Optional[str] = None
 
-
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+    
 class UsuarioResponse(UsuarioBase):
     id_usuario: int
     fecha_registro: datetime

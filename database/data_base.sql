@@ -5,6 +5,12 @@ CREATE TABLE rol (
     permisos TEXT DEFAULT '{}'
 );
 
+CREATE TABLE revoken_token(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    jti TEXT,
+    created_at DATETIME
+);
+
 CREATE TABLE pais (
     id_pais INTEGER PRIMARY KEY AUTOINCREMENT,
     pais TEXT NOT NULL,

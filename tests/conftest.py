@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models import (usuario,password_reset,comentario,contacto,
+from app.models import (usuario,password_reset, token_blacklist, comentario,contacto,
                         faq,interes,mensaje,notificacion,pais,publicacion,reaccion_publicacion,
                         rol,sesion_chat,solicitud_amistad,usuario_interes,usuario_sesion_chat)
 from app.models.rol import Rol
