@@ -27,9 +27,20 @@ def crear_publicacion(publicacion: PublicacionCreate, db: Session = Depends(get_
 
 @router.put("/{publicacion_id}", response_model=PublicacionResponse)
 def actualizar_publicacion(publicacion_id: int, publicacion: PublicacionUpdate, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    return publicacion_service.update_publicacion(db, publicacion_id, publicacion, current_user.id_usuario)
-
+    return publicacion_service.update_publicacion(
+        db, publicacion_id, publicacion,
+        usuario_id=current_user.id_usuario,
+        es_admin=(current_user.id_rol == 1)
+    )
 
 @router.delete("/{publicacion_id}")
-def eliminar_publicacion(publicacion_id: int, db: Session = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    return publicacion_service.delete_publicacion(db, publicacion_id, current_user.id_usuario)
+def eliminar_publicacion(
+    publicacion_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    return publicacion_service.delete_publicacion(
+        db, publicacion_id,
+        usuario_id=current_user.id_usuario,
+        es_admin=(current_user.id_rol == 1)
+    )

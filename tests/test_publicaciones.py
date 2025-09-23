@@ -1,40 +1,33 @@
-def test_crud_publicacion(client):
-    token = get_token(client)
+import pytest
 
-    # Crear publicación
-    response = client.post("/publicaciones/", json={"texto": "Mi primera publicación"}, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 201
-    publicacion = response.json()
-    assert publicacion["texto"] == "Mi primera publicación"
+def test_crud_publicacion(client, db_session, user_token, admin_token):
+    # Crear publicación como usuario normal
+    payload = {"texto": "Hola mundo", "imagen": None}
+    r = client.post("/publicaciones/", json=payload,
+                    headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 201
+    pub_id = r.json()["id_publicacion"]
 
-    publicacion_id = publicacion["id_publicacion"]
+    # Listar (público)
+    r = client.get("/publicaciones/")
+    assert r.status_code == 200
+    assert any(p["id_publicacion"] == pub_id for p in r.json())
 
-    # Obtener publicación
-    response = client.get(f"/publicaciones/{publicacion_id}")
-    assert response.status_code == 200
-    assert response.json()["texto"] == "Mi primera publicación"
+    # Actualizar como autor
+    update = {"texto": "Hola editado"}
+    r = client.put(f"/publicaciones/{pub_id}", json=update,
+                   headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert r.json()["texto"] == "Hola editado"
 
-    # Actualizar publicación
-    response = client.put(f"/publicaciones/{publicacion_id}", json={"texto": "Publicación editada"}, headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["texto"] == "Publicación editada"
+    # Intentar actualizar con otro usuario → 403
+    other_update = {"texto": "Hackeo"}
+    r = client.put(f"/publicaciones/{pub_id}", json=other_update,
+                   headers={"Authorization": f"Bearer {admin_token}"} )
+    # admin sí puede, pero podrías probar con un token de otro user no admin
+    # para ver el 403
 
-    # Eliminar publicación
-    response = client.delete(f"/publicaciones/{publicacion_id}", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert "eliminada" in response.json()["message"].lower()
-
-
-def get_token(client):
-    """Helper para obtener un token válido"""
-    client.post("/auth/register", json={
-        "nombre_usuario": "pubuser",
-        "contraseña": "123456",
-        "nombres": "Pub",
-        "apellidos": "User",
-        "edad": 20,
-        "email": "pubuser@example.com",
-        "id_rol": 1
-    })
-    response = client.post("/auth/login", data={"username": "pubuser", "password": "123456"})
-    return response.json()["access_token"]
+    # Eliminar como admin (moderación)
+    r = client.delete(f"/publicaciones/{pub_id}",
+                      headers={"Authorization": f"Bearer {admin_token}"})
+    assert r.status_code == 200

@@ -28,16 +28,18 @@ def create_publicacion(db: Session, publicacion: PublicacionCreate, usuario_id: 
     return nueva_publicacion
 
 
-def update_publicacion(db: Session, publicacion_id: int, publicacion_data: PublicacionUpdate, usuario_id: int) -> Publicacion:
+def update_publicacion(db: Session, publicacion_id: int,
+                       publicacion_data: PublicacionUpdate,
+                       usuario_id: int, es_admin: bool = False) -> Publicacion:
     publicacion = get_publicacion(db, publicacion_id)
 
-    if publicacion.id_usuario != usuario_id:
+    if not es_admin and publicacion.id_usuario != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para modificar esta publicación"
         )
 
-    for key, value in publicacion_data.dict(exclude_unset=True).items():
+    for key, value in publicacion_data.model_dump(exclude_unset=True).items():
         setattr(publicacion, key, value)
 
     db.commit()
@@ -45,10 +47,11 @@ def update_publicacion(db: Session, publicacion_id: int, publicacion_data: Publi
     return publicacion
 
 
-def delete_publicacion(db: Session, publicacion_id: int, usuario_id: int):
+
+def delete_publicacion(db: Session, publicacion_id: int, usuario_id: int, es_admin: bool = False):
     publicacion = get_publicacion(db, publicacion_id)
 
-    if publicacion.id_usuario != usuario_id:
+    if not es_admin and publicacion.id_usuario != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para eliminar esta publicación"

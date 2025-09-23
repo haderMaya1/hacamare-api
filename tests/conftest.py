@@ -94,4 +94,19 @@ def admin_token(client, db_session):
     r = client.post("/auth/login", data=login_data)
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
+
+@pytest.fixture
+def user_token(client):
+    """Helper para obtener un token válido"""
+    client.post("/auth/register", json={
+        "nombre_usuario": "pubuser",
+        "contraseña": "123456",
+        "nombres": "Pub",
+        "apellidos": "User",
+        "edad": 20,
+        "email": "pubuser@example.com",
+        "id_rol": 1
+    })
+    response = client.post("/auth/login", data={"username": "pubuser", "password": "123456"})
+    return response.json()["access_token"]
    
