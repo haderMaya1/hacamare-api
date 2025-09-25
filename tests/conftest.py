@@ -5,9 +5,12 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base, get_db
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models import (usuario,password_reset, token_blacklist, comentario,contacto,
-                        faq,interes,mensaje,notificacion,pais,publicacion,reaccion_publicacion,
-                        rol,sesion_chat,solicitud_amistad,usuario_interes,usuario_sesion_chat)
+from app.models import (
+    usuario, password_reset, token_blacklist, comentario, contacto,
+    faq, interes, mensaje, notificacion, pais, publicacion,
+    reaccion_publicacion, rol, sesion_chat, solicitud_amistad,
+    usuario_interes, usuario_sesion_chat
+)
 from app.models.rol import Rol
 from app.models.pais import Pais
 from app.models.usuario import Usuario
@@ -29,15 +32,23 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 def setup_database():
     Base.metadata.create_all(bind=engine)
 
-    # Seeder: rol por defecto
+    # Seeder: rol administrador forzado a id_rol=1
     session = TestingSessionLocal()
-    if not session.query(Rol).filter_by(id_rol=1).first():
-        session.add(Rol(id_rol=1, nombre="Default", permisos="{}"))
-        
+
+    # Elimina cualquier rol que pueda interferir
+    session.query(Rol).delete()
+    session.commit()
+
+    admin_role = session.query(Rol).filter_by(id_rol=1).first()
+    if not admin_role:
+        admin_role = Rol(id_rol=1, nombre="Administrador", permisos='{"all": true}')
+        session.add(admin_role)
+
+    # País por defecto
     if not session.query(Pais).filter_by(id_pais=1).first():
         session.add(Pais(id_pais=1, pais="Colombia",
                          estado="Antioquia", ciudad="Medellín"))
-         
+
     session.commit()
     session.close()
 
@@ -59,25 +70,22 @@ def db_session():
         transaction.rollback()
         connection.close()
 
+
 # Fixture para cliente FastAPI que use la misma sesión
 @pytest.fixture
 def client(db_session):
     def override_get_db():
-        yield db_session  # no cerramos aquí, rollback lo maneja db_session
+        yield db_session  # rollback lo maneja db_session
     app.dependency_overrides[get_db] = override_get_db
     return TestClient(app)
 
+
 @pytest.fixture
 def admin_token(client, db_session):
-    # 1) Asegurar que exista el rol 'Administrador' (case-insensitive)
-    rol = db_session.query(Rol).filter(Rol.nombre.ilike("administrador")).first()
-    if not rol:
-        rol = Rol(nombre="Administrador", permisos='{"all": true}')
-        db_session.add(rol)
-        db_session.commit()
-        db_session.refresh(rol)
+    """Crea o reutiliza un usuario administrador con id_rol=1 y devuelve su token"""
+    rol_admin = db_session.query(Rol).filter_by(id_rol=1).first()
+    assert rol_admin, "El rol Administrador (id_rol=1) no existe en la base de datos de tests"
 
-    # 2) Crear admin user si no existe
     username = "admin_test"
     admin = db_session.query(Usuario).filter_by(nombre_usuario=username).first()
     if not admin:
@@ -88,7 +96,7 @@ def admin_token(client, db_session):
             apellidos="Test",
             edad=30,
             email="admin_test@example.com",
-            id_rol=rol.id_rol,
+            id_rol=rol_admin.id_rol,
             estado_cuenta="activo",
             email_verificado=True
         )
@@ -96,14 +104,15 @@ def admin_token(client, db_session):
         db_session.commit()
         db_session.refresh(admin)
 
-    # 3) Login vía endpoint para obtener token (asegura que endpoint funcione)
+    # Login vía endpoint para obtener token
     r = client.post("/auth/login", data={"username": username, "password": "admin123"})
     assert r.status_code == 200, f"Login admin falló: {r.status_code} - {r.text}"
     return r.json()["access_token"]
 
+
 @pytest.fixture
 def user_token(client):
-    """Helper para obtener un token válido"""
+    """Helper para obtener un token válido de usuario normal"""
     client.post("/auth/register", json={
         "nombre_usuario": "pubuser",
         "contraseña": "123456",
@@ -111,8 +120,7 @@ def user_token(client):
         "apellidos": "User",
         "edad": 20,
         "email": "pubuser@example.com",
-        "id_rol": 1
+        "id_rol": 1  # Puede ser el mismo rol, pero no es admin
     })
     response = client.post("/auth/login", data={"username": "pubuser", "password": "123456"})
     return response.json()["access_token"]
-   
