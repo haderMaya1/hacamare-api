@@ -1,43 +1,40 @@
-def test_crud_mensaje(client):
-    # Registrar usuario
-    client.post("/auth/register", json={
-        "nombre_usuario": "msguser",
-        "contraseña": "123456",
-        "nombres": "Msg",
-        "apellidos": "User",
-        "edad": 25,
-        "email": "msguser@example.com",
-        "id_rol": 1
-    })
-    login = client.post("/auth/login", data={"username": "msguser", "password": "123456"})
-    token = login.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
+def test_mensaje_crud(client, db_session, user_token):
     # Crear sesión de chat
-    sesion = client.post("/sesiones/", json={"nombre_tema": "Chat Mensajes", "tipo": "público"}, headers=headers)
-    sesion_id = sesion.json()["id_sesion"]
+    sesion_payload = {"nombre_tema": "Sesión de prueba", "tipo": "público"}
+    r = client.post("/sesiones-chat/", json=sesion_payload,
+                    headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 201
+    id_sesion = r.json()["id_sesion"]
 
     # Crear mensaje
-    response = client.post("/mensajes/", json={"contenido": "Hola mundo", "id_sesion": sesion_id}, headers=headers)
-    assert response.status_code == 201
-    mensaje_id = response.json()["id_mensaje"]
+    mensaje_payload = {"contenido": "Hola mundo!", "id_sesion": id_sesion}
+    r = client.post("/mensajes/", json=mensaje_payload,
+                    headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 201
+    mensaje_id = r.json()["id_mensaje"]
 
-    # Obtener mensaje
-    response = client.get(f"/mensajes/{mensaje_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["contenido"] == "Hola mundo"
+    # Obtener mensaje  🔑
+    r = client.get(f"/mensajes/{mensaje_id}",
+                   headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert r.json()["contenido"] == "Hola mundo!"
 
-    # Listar mensajes de la sesión
-    response = client.get(f"/mensajes/sesion/{sesion_id}", headers=headers)
-    assert response.status_code == 200
-    assert len(response.json()) >= 1
+    # Listar mensajes de la sesión 🔑
+    r = client.get(f"/mensajes/sesion/{id_sesion}",
+                   headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert any(m["id_mensaje"] == mensaje_id for m in r.json())
 
-    # Actualizar mensaje
-    response = client.put(f"/mensajes/{mensaje_id}", json={"contenido": "Mensaje editado"}, headers=headers)
-    assert response.status_code == 200
-    assert response.json()["contenido"] == "Mensaje editado"
+    # Actualizar mensaje 🔑
+    update_payload = {"contenido": "Mensaje editado"}
+    r = client.put(f"/mensajes/{mensaje_id}",
+                   json=update_payload,
+                   headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert r.json()["contenido"] == "Mensaje editado"
 
-    # Eliminar mensaje
-    response = client.delete(f"/mensajes/{mensaje_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["message"] == "Mensaje eliminado"
+    # Eliminar mensaje 🔑
+    r = client.delete(f"/mensajes/{mensaje_id}",
+                      headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert "eliminado" in r.json()["message"]

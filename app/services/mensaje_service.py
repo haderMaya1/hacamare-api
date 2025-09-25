@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 from fastapi import HTTPException, status
 from app.models.mensaje import Mensaje
 from app.schemas.mensaje import MensajeCreate, MensajeUpdate
@@ -9,6 +10,7 @@ def crear_mensaje(db: Session, mensaje: MensajeCreate, current_user):
     nuevo_mensaje = Mensaje(
         contenido=mensaje.contenido,
         imagen=mensaje.imagen,
+        fecha_envio=datetime.utcnow(),
         id_remitente=current_user.id_usuario,
         id_sesion=mensaje.id_sesion
     )

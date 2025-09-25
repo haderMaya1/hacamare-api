@@ -18,9 +18,6 @@ class MensajeResponse(MensajeBase):
     fecha_envio: datetime
     id_remitente: int
     id_sesion: int
-    
-    class Config:
-        orm_mode = True
 
     class Config:
         from_attributes = True
