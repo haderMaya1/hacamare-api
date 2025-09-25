@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 class PaisBase(BaseModel):
     pais: str
@@ -9,8 +8,12 @@ class PaisBase(BaseModel):
 class PaisCreate(PaisBase):
     pass
 
+class PaisUpdate(BaseModel):
+    pais: str | None = None
+    estado: str | None = None
+    ciudad: str | None = None
+
 class PaisResponse(PaisBase):
     id_pais: int
-    
     class Config:
         orm_mode = True
