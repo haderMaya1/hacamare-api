@@ -1,46 +1,33 @@
-def test_usuario_sesion_chat(client):
-    # Registrar usuario anfitrión
-    client.post("/auth/register", json={
-        "nombre_usuario": "host",
-        "contraseña": "123456",
-        "nombres": "Host",
-        "apellidos": "User",
-        "edad": 30,
-        "email": "host@example.com",
-        "id_rol": 1
-    })
-    login_host = client.post("/auth/login", data={"username": "host", "password": "123456"})
-    token_host = login_host.json()["access_token"]
-    headers_host = {"Authorization": f"Bearer {token_host}"}
+# tests/test_usuario_sesion_chat.py
+def test_usuario_sesion_chat_crud(client, db_session, user_token):
+    # Crear sesión de chat como admin o user antes (suponiendo que ya hay una)
+    sesion_payload = {
+        "nombre_tema": "Prueba Chat",
+        "tipo": "privado"
+    }
+    r = client.post("/sesiones-chat/", json=sesion_payload,
+                    headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 201
+    id_sesion = r.json()["id_sesion"]
 
-    # Crear sesión de chat
-    sesion = client.post("/sesiones/", json={"nombre_tema": "Chat Test", "tipo": "público"}, headers=headers_host)
-    sesion_id = sesion.json()["id_sesion"]
+    # Unirse a la sesión
+    join_payload = {"id_usuario": 0, "id_sesion": id_sesion}  # id_usuario se ignora
+    r = client.post("/usuario-sesion-chat/", json=join_payload,
+                    headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 201
+    data = r.json()
+    assert data["id_sesion"] == id_sesion
 
-    # Registrar otro usuario
-    client.post("/auth/register", json={
-        "nombre_usuario": "guest",
-        "contraseña": "123456",
-        "nombres": "Guest",
-        "apellidos": "User",
-        "edad": 25,
-        "email": "guest@example.com",
-        "id_rol": 1
-    })
-    login_guest = client.post("/auth/login", data={"username": "guest", "password": "123456"})
-    token_guest = login_guest.json()["access_token"]
-    headers_guest = {"Authorization": f"Bearer {token_guest}"}
+    # Listar participantes
+    r = client.get(f"/usuario-sesion-chat/participants/{id_sesion}",
+                   headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    participantes = r.json()
+    assert any(p["id_sesion"] == id_sesion for p in participantes)
 
-    # Agregar guest a la sesión
-    response = client.post("/usuario-sesion/", json={
-        "id_usuario": 2,   # host = 1, guest = 2
-        "id_sesion": sesion_id
-    }, headers=headers_host)
-    assert response.status_code == 201
-    assert response.json()["id_usuario"] == 2
-    assert response.json()["id_sesion"] == sesion_id
-
-    # Eliminar guest de la sesión
-    response = client.delete(f"/usuario-sesion/?id_usuario=2&id_sesion={sesion_id}", headers=headers_host)
-    assert response.status_code == 200
-    assert response.json()["message"] == "Usuario eliminado de la sesión"
+    # Salir de la sesión
+    r = client.request("DELETE", "/usuario-sesion-chat/",
+                       json=join_payload,
+                       headers={"Authorization": f"Bearer {user_token}"})
+    assert r.status_code == 200
+    assert "Usuario removido" in r.json()["message"]

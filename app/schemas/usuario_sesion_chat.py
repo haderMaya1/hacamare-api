@@ -9,7 +9,4 @@ class UsuarioSesionChatCreate(UsuarioSesionChatBase):
 
 class UsuarioSesionChatResponse(UsuarioSesionChatBase):
     class Config:
-        orm_mode = True
-
-    class Config:
         from_attributes = True
