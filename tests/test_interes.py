@@ -1,50 +1,55 @@
-def test_crud_interes(client):
-    # Registrar usuario para autenticación
-    response = client.post("/auth/register", json={
-        "nombre_usuario": "interesuser",
-        "contraseña": "123456",
-        "nombres": "Interes",
-        "apellidos": "Tester",
-        "edad": 28,
-        "email": "interes@example.com",
-        "id_rol": 1
-    })
-    assert response.status_code in (200, 201)
+import pytest
 
-    # Login
-    response = client.post("/auth/login", data={
-        "username": "interesuser",
-        "password": "123456"
-    })
-    token = response.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-
-    # Crear interés
-    response = client.post("/intereses/", json={
-        "nombre": "Música",
-        "categoria": "Arte"
-    }, headers=headers)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["nombre"] == "Música"
+# Este test cubre todo el CRUD de intereses
+def test_crud_interes(client, admin_token):
+    # ---------- Crear ----------
+    payload = {
+        "nombre": "Videojuegos",
+        "categoria": "Ocio"
+    }
+    r = client.post(
+        "/intereses/",
+        json=payload,
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()
     interes_id = data["id_interes"]
+    assert data["nombre"] == "Videojuegos"
+    assert data["categoria"] == "Ocio"
 
-    # Listar intereses
-    response = client.get("/intereses/", headers=headers)
-    assert response.status_code == 200
-    assert any(i["id_interes"] == interes_id for i in response.json())
+    # ---------- Listar ----------
+    r = client.get("/intereses/")
+    assert r.status_code == 200
+    lista = r.json()
+    assert any(i["id_interes"] == interes_id for i in lista)
 
-    # Obtener interés
-    response = client.get(f"/intereses/{interes_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["id_interes"] == interes_id
+    # ---------- Obtener por ID ----------
+    r = client.get(f"/intereses/{interes_id}")
+    assert r.status_code == 200
+    detalle = r.json()
+    assert detalle["nombre"] == "Videojuegos"
 
-    # Actualizar interés
-    response = client.put(f"/intereses/{interes_id}", json={"categoria": "Cultura"}, headers=headers)
-    assert response.status_code == 200
-    assert response.json()["categoria"] == "Cultura"
+    # ---------- Actualizar ----------
+    update_payload = {"nombre": "Gaming"}
+    r = client.put(
+        f"/intereses/{interes_id}",
+        json=update_payload,
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert r.status_code == 200
+    updated = r.json()
+    assert updated["nombre"] == "Gaming"
 
-    # Eliminar interés
-    response = client.delete(f"/intereses/{interes_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["message"] == "Interés eliminado correctamente"
+    # ---------- Eliminar ----------
+    r = client.delete(
+        f"/intereses/{interes_id}",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert r.status_code == 200
+    msg = r.json()
+    assert "eliminado" in msg["message"].lower()
+
+    # Verificar que ya no exista
+    r = client.get(f"/intereses/{interes_id}")
+    assert r.status_code == 404
