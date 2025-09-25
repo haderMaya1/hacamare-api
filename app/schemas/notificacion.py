@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class NotificacionBase(BaseModel):
-    tipo: str
+    tipo: Optional[str] = None 
     contenido: str
     estado: Optional[str] = "activa"
     id_usuario: int
