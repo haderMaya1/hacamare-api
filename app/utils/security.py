@@ -11,7 +11,7 @@ from app.utils.permissions import PERMISSIONS
 from app.models.usuario import Usuario
 from app.models.rol import Rol
 from app.models.token_blacklist import RevokedToken
-from typing import Optional, Callable
+from typing import Optional, Callable, Iterable
 import json
 import uuid
 import os
@@ -91,30 +91,42 @@ def require_permission(permission: str) -> Callable:
         return current_user
     return dependency
 
-def require_role(required: list[str]):
+
+def require_role(allowed: Iterable):
     """
-    required: lista de permisos o nombres de rol permitidos.
-    Ej: ["admin"]  o  ["usuarios:listar"]
+    Devuelve una dependencia que permite el paso si current_user tiene
+    un rol cuyo nombre (case-insensitive) o id coincide con alguno de los 'allowed'.
+    'allowed' puede contener strings (nombres) y/o ints (ids).
+    Ej: Depends(require_role(["administrador", "admin", 1]))
     """
-    def wrapper(
-        current_user = Depends(get_current_user),
-        db: Session = Depends(get_db)
-    ):
-        rol = db.query(Rol).filter(Rol.id_rol == current_user.id_rol).first()
-        if not rol:
-            raise HTTPException(status_code=403, detail="Rol no encontrado")
+    allowed_list = list(allowed)
 
-        # Si required es un nombre de rol
-        if any(req.lower() == rol.nombre.lower() for req in required):
-            return current_user
+    def dependency(current_user: Usuario = Depends(get_current_user)):
+        # nombre del rol desde relación si existe
+        role_name = ""
+        try:
+            role_name = (current_user.rol.nombre or "").lower()
+        except Exception:
+            role_name = ""
+        role_id = getattr(current_user, "id_rol", None)
 
-        # Si es permiso, revisa el JSON de permisos
-        permisos = json.loads(rol.permisos or "{}")
-        if any(permisos.get(req, False) for req in required):
-            return current_user
+        for a in allowed_list:
+            if isinstance(a, str):
+                if a.lower() == role_name:
+                    return current_user
+                # permitir equivalencias comunes
+                if a.lower() in ("admin", "administrador", "administrator") and role_name in ("admin", "administrador", "administrator"):
+                    return current_user
+            elif isinstance(a, int):
+                if role_id == a:
+                    return current_user
 
-        raise HTTPException(status_code=403, detail="Permiso denegado")
-    return wrapper
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para realizar esta acción"
+        )
+
+    return dependency
 
 # ==========================
 # DEPENDENCIAS DE USUARIO

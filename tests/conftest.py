@@ -69,30 +69,36 @@ def client(db_session):
 
 @pytest.fixture
 def admin_token(client, db_session):
-    """
-    Crea un usuario admin y devuelve un token válido para las pruebas
-    """
-    admin = db_session.query(Usuario).filter_by(nombre_usuario="admin").first()
+    # 1) Asegurar que exista el rol 'Administrador' (case-insensitive)
+    rol = db_session.query(Rol).filter(Rol.nombre.ilike("administrador")).first()
+    if not rol:
+        rol = Rol(nombre="Administrador", permisos='{"all": true}')
+        db_session.add(rol)
+        db_session.commit()
+        db_session.refresh(rol)
+
+    # 2) Crear admin user si no existe
+    username = "admin_test"
+    admin = db_session.query(Usuario).filter_by(nombre_usuario=username).first()
     if not admin:
         admin = Usuario(
-            nombre_usuario="admin",
+            nombre_usuario=username,
             contraseña=hash_password("admin123"),
             nombres="Admin",
-            apellidos="Principal",
+            apellidos="Test",
             edad=30,
-            email="admin@example.com",
-            id_pais=1,          # usa un país válido de test
+            email="admin_test@example.com",
+            id_rol=rol.id_rol,
             estado_cuenta="activo",
-            email_verificado=True,
-            id_rol=1            # rol admin
+            email_verificado=True
         )
         db_session.add(admin)
         db_session.commit()
+        db_session.refresh(admin)
 
-    # login
-    login_data = {"username": "admin", "password": "admin123"}
-    r = client.post("/auth/login", data=login_data)
-    assert r.status_code == 200, r.text
+    # 3) Login vía endpoint para obtener token (asegura que endpoint funcione)
+    r = client.post("/auth/login", data={"username": username, "password": "admin123"})
+    assert r.status_code == 200, f"Login admin falló: {r.status_code} - {r.text}"
     return r.json()["access_token"]
 
 @pytest.fixture

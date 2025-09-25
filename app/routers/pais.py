@@ -23,7 +23,7 @@ def obtener_pais(pais_id: int, db: Session = Depends(get_db)):
 def crear_pais(
     pais: PaisCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role(["Administrador"]))
+    current_user=Depends(require_role(["admin"]))
 ):
     return pais_service.create_pais(db, pais)
 
@@ -32,7 +32,7 @@ def actualizar_pais(
     pais_id: int,
     pais: PaisUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role(["Administrador"]))
+    current_user=Depends(require_role(["admin"]))
 ):
     return pais_service.update_pais(db, pais_id, pais)
 
@@ -40,6 +40,6 @@ def actualizar_pais(
 def eliminar_pais(
     pais_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_role(["Administrador"]))
+    current_user=Depends(require_role(["admin"]))
 ):
     return pais_service.delete_pais(db, pais_id)
